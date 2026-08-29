@@ -84,6 +84,26 @@ describe("Nominatim result mapping", () => {
     assert.equal(results.some((item) => item.displayAddress === "Invalid"), false);
   });
 
+  it("does not use Brisbane as the suburb when display_name has a more specific place", () => {
+    const result = mapNominatimHit({
+      place_id: 12,
+      lat: "-27.201",
+      lon: "153.026",
+      display_name: "Cork Street, Deception Bay, Brisbane, Queensland, 4508, Australia",
+      address: {
+        road: "Cork Street",
+        city: "Brisbane",
+        state: "Queensland",
+        postcode: "4508",
+        country: "Australia",
+        country_code: "au",
+      },
+    });
+    assert.ok(result);
+    assert.equal(result.suburb, "Deception Bay");
+    assert.equal(result.displayAddress, "Cork Street, Deception Bay QLD 4508");
+  });
+
   it("defaults the configured provider to Nominatim", () => {
     assert.equal(parseGeocodingProviderKind(undefined), "nominatim");
     assert.equal(parseGeocodingProviderKind("local-lookup"), "local-lookup");

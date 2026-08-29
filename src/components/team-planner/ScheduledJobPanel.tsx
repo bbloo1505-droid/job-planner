@@ -1,6 +1,7 @@
 "use client";
 
 import { format, parseISO } from "date-fns";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { formatDisplayTime } from "@/lib/routing/round-time";
 import { workCategoryMeta } from "@/lib/team/work-category";
@@ -16,8 +17,8 @@ export function ScheduledJobPanel({ compact = false }: { compact?: boolean }) {
   const jobs = useTeamPlannerStore((state) => state.jobs);
   const allocations = useTeamPlannerStore((state) => state.allocations);
   const consultants = useTeamPlannerStore((state) => state.consultants);
-  const setView = useTeamPlannerStore((state) => state.setView);
   const selectJob = useTeamPlannerStore((state) => state.selectJob);
+  const router = useRouter();
   const job = selectedJobId ? jobs[selectedJobId] : undefined;
   const allocation = job ? allocationForJob({ allocations }, job.id) : undefined;
   const consultant = allocation
@@ -68,7 +69,7 @@ export function ScheduledJobPanel({ compact = false }: { compact?: boolean }) {
           variant="outline"
           data-testid="view-in-planner"
           className="h-8 w-full text-[12px]"
-          onClick={() => setView("planner")}
+          onClick={() => router.push("/team")}
         >
           View in planner
         </Button>

@@ -42,8 +42,7 @@ async function main() {
   await page.goto(`${BASE}/`);
   await page.getByRole("button", { name: /optimise my day/i }).waitFor({ timeout: 15000 });
 
-  await page.goto(`${BASE}/team`);
-  await page.locator('[data-view="map"]').click();
+  await page.goto(`${BASE}/team/map`);
   const map = page.locator('[data-testid="geo-map"]');
   await map.waitFor();
 
@@ -80,10 +79,6 @@ async function main() {
   await page.locator('[data-testid="scheduled-job-panel"]').waitFor();
   await page.keyboard.press("Control+z");
   await page.locator('[data-testid="match-panel"]').waitFor();
-
-  await page.locator('[data-view="split"]').click();
-  await page.locator('[data-testid="maplibre-canvas"][data-map-ready="true"]').waitFor();
-  await page.getByRole("grid", { name: "Weekly allocation board" }).waitFor();
 
   await page.locator('[data-consultant-name="c-taylor"]').click();
   await page.locator('[data-geo-day="week"]').click();

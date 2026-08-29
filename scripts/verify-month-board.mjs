@@ -112,9 +112,9 @@ async function main() {
   if ((await page.locator('[data-testid="team-planner-app"]').getAttribute("data-selected-date")) !== "2026-08-25") {
     throw new Error("Date header did not select 25 Aug");
   }
-  await page.locator('[data-view="map"]').click();
+  await page.goto(`${BASE}/team/map`);
   await page.locator('[data-testid="geo-map"][data-geo-scope="2026-08-25"]').waitFor();
-  await page.locator('[data-view="planner"]').click();
+  await page.goto(`${BASE}/team`);
   await page.locator('[data-testid="planning-board"][data-board-view="month"]').waitFor();
 
   await page.getByLabel("Next month").click();
@@ -138,8 +138,7 @@ async function main() {
   const nameVisible = await page.locator('[data-consultant-row="c-taylor"]').boundingBox();
   if (!nameVisible || nameVisible.x > 280) throw new Error("Consultant names not visible at 1366");
 
-  await page.locator('[data-view="split"]').click();
-  await page.locator('[data-testid="planning-board"]').waitFor();
+  await page.goto(`${BASE}/team/map`);
   await page.locator('[data-testid="geo-map"]').waitFor();
 
   console.log("MONTH_BOARD_E2E_OK");

@@ -24,8 +24,7 @@ async function main() {
     args: ["--use-gl=angle", "--use-angle=swiftshader", "--enable-webgl"],
   });
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
-  await page.goto(`${BASE}/team`);
-  await page.locator('[data-view="map"]').click();
+  await page.goto(`${BASE}/team/map`);
   await page.locator('[data-provider-option="openfreemap"]').click();
   await page
     .locator('[data-testid="maplibre-canvas"][data-map-engine="openfreemap"][data-map-ready="true"]')

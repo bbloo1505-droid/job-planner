@@ -7,6 +7,7 @@ import { Plus } from "lucide-react";
 import { useMemo } from "react";
 import { priorityLabel, safeDate } from "@/lib/format";
 import { jobHasResolvedLocation } from "@/lib/geo";
+import { streetAndSuburbLabel } from "@/lib/geocoding/address-label";
 import { getNearbyAlongRoute } from "@/lib/routing/nearby-along-route";
 import { useDayRouteStore } from "@/lib/store/day-route-store";
 import { cn } from "@/lib/utils";
@@ -52,7 +53,7 @@ export function NearbyJobsPanel() {
             <NearbyRow
               key={match.job.id}
               jobId={match.job.id}
-              suburb={match.job.suburb ?? "Unknown"}
+              suburb={streetAndSuburbLabel(match.job)}
               address={match.job.address}
               detour={match.detourMinutes}
               sampling={match.samplingMinutes}

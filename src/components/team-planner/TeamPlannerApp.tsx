@@ -18,8 +18,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { JobEditor } from "@/components/team-planner/JobEditor";
 import { MatchPanel } from "@/components/team-planner/MatchPanel";
 import { PlanningBoard } from "@/components/team-planner/PlanningBoard";
-import { ScheduledJobPanel } from "@/components/team-planner/ScheduledJobPanel";
-import { TeamMap } from "@/components/team-planner/TeamMap";
 import { UnassignedPanel, matchesLite } from "@/components/team-planner/UnassignedPanel";
 import { WorkCategoryKey } from "@/components/team-planner/WorkCategoryKey";
 import { WorkCategoryMenu } from "@/components/team-planner/WorkCategoryMenu";
@@ -47,7 +45,6 @@ export function TeamPlannerApp() {
   const showWeekends = useTeamPlannerStore((state) => state.showWeekends);
   const selectedJobId = useTeamPlannerStore((state) => state.selectedJobId);
   const selectedDate = useTeamPlannerStore((state) => state.selectedDate);
-  const view = useTeamPlannerStore((state) => state.view);
   const search = useTeamPlannerStore((state) => state.search);
   const priorityFilter = useTeamPlannerStore((state) => state.priorityFilter);
   const dueThisWeekOnly = useTeamPlannerStore((state) => state.dueThisWeekOnly);
@@ -59,7 +56,6 @@ export function TeamPlannerApp() {
   const reorderInCell = useTeamPlannerStore((state) => state.reorderInCell);
   const selectDate = useTeamPlannerStore((state) => state.selectDate);
   const selectJob = useTeamPlannerStore((state) => state.selectJob);
-  const setView = useTeamPlannerStore((state) => state.setView);
   const setSearch = useTeamPlannerStore((state) => state.setSearch);
   const setPriorityFilter = useTeamPlannerStore((state) => state.setPriorityFilter);
   const setDueThisWeekOnly = useTeamPlannerStore((state) => state.setDueThisWeekOnly);
@@ -316,42 +312,7 @@ export function TeamPlannerApp() {
                 </div>
               </div>
               <div className="flex flex-wrap items-center gap-2">
-                <div className="flex rounded-md border border-hairline p-0.5">
-                  <button
-                    type="button"
-                    data-view="planner"
-                    onClick={() => setView("planner")}
-                    className={cn(
-                      "h-7 rounded px-2.5 text-[12px] font-medium",
-                      view === "planner" ? "bg-brand text-white" : "text-slate-600 hover:bg-slate-50"
-                    )}
-                  >
-                    Planner
-                  </button>
-                  <button
-                    type="button"
-                    data-view="map"
-                    onClick={() => setView("map")}
-                    className={cn(
-                      "h-7 rounded px-2.5 text-[12px] font-medium",
-                      view === "map" ? "bg-brand text-white" : "text-slate-600 hover:bg-slate-50"
-                    )}
-                  >
-                    Map
-                  </button>
-                  <button
-                    type="button"
-                    data-view="split"
-                    onClick={() => setView("split")}
-                    className={cn(
-                      "h-7 rounded px-2.5 text-[12px] font-medium",
-                      view === "split" ? "bg-brand text-white" : "text-slate-600 hover:bg-slate-50"
-                    )}
-                  >
-                    Split
-                  </button>
-                </div>
-                {view !== "map" ? <WorkCategoryKey /> : null}
+                <WorkCategoryKey />
                 <Button
                   type="button"
                   variant="ghost"
@@ -364,7 +325,6 @@ export function TeamPlannerApp() {
                 </Button>
               </div>
             </div>
-            {view !== "map" ? (
             <div className="mt-2 flex flex-wrap items-center gap-2">
               <input
                 className="field-input h-7 max-w-[220px]"
@@ -418,17 +378,11 @@ export function TeamPlannerApp() {
                 </label>
               ) : null}
             </div>
-            ) : null}
           </header>
 
           <div className="flex min-h-0 flex-1">
             <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-              <div
-                className={cn(
-                  "min-h-0 overflow-hidden",
-                  view === "map" ? "hidden" : "flex min-h-0 flex-1 flex-col"
-                )}
-              >
+              <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
                 <PlanningBoard
                   consultants={visibleConsultants}
                   days={days}
@@ -443,17 +397,6 @@ export function TeamPlannerApp() {
                   }}
                 />
               </div>
-              {view === "split" || view === "map" ? (
-                <div
-                  className={
-                    view === "map"
-                      ? "min-h-0 flex-1"
-                      : "min-h-[280px] flex-[0.9] border-t border-hairline"
-                  }
-                >
-                  <TeamMap variant={view === "map" ? "full" : "split"} />
-                </div>
-              ) : null}
             </div>
 
             <aside
@@ -467,7 +410,7 @@ export function TeamPlannerApp() {
                 <div className="min-h-0 flex-1 overflow-hidden">
                   <MatchPanel key={selectedJobId ?? "match"} />
                 </div>
-              ) : view === "planner" ? (
+              ) : (
                 <>
                   {selectedJobId ? (
                     <div className="min-h-0 flex-[1.2] overflow-hidden">
@@ -483,17 +426,6 @@ export function TeamPlannerApp() {
                   >
                     <UnassignedPanel onCategoryMenu={openCategoryMenu} />
                   </div>
-                </>
-              ) : (
-                <>
-                  {selectedJobId ? (
-                    <ScheduledJobPanel compact={view === "split"} />
-                  ) : null}
-                  {view === "split" || !selectedJobId ? (
-                    <div className="min-h-0 flex-1 overflow-hidden">
-                      <UnassignedPanel onCategoryMenu={openCategoryMenu} />
-                    </div>
-                  ) : null}
                 </>
               )}
             </aside>

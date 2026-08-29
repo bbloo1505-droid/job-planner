@@ -1,3 +1,4 @@
+import { streetAndSuburbFromDisplay } from "@/lib/geocoding/address-label";
 import { normalizeAddressKey } from "@/lib/geo";
 import type { GeocodingResult } from "@/lib/types";
 
@@ -94,13 +95,7 @@ export function pickAutoAcceptMatch(
 }
 
 export function progressLabelForAddress(address: string, suburb?: string): string {
-  if (suburb?.trim()) return suburb.trim();
-  const parsed = parseAddressQuery(address);
-  if (parsed.suburb) {
-    return parsed.suburb.replace(/\b\w/g, (char) => char.toUpperCase());
-  }
-  const compact = address.trim().replace(/\s+/g, " ");
-  return compact.length > 32 ? `${compact.slice(0, 29)}…` : compact || "Address";
+  return streetAndSuburbFromDisplay(address, suburb);
 }
 
 function localityMatches(

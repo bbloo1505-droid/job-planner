@@ -26,6 +26,7 @@ interface NominatimAddress {
   house_number?: string;
   road?: string;
   suburb?: string;
+  neighbourhood?: string;
   town?: string;
   village?: string;
   hamlet?: string;
@@ -90,7 +91,7 @@ export function expandStreetAbbreviations(query: string): string {
 export function formatNominatimDisplay(hit: NominatimHit): string {
   const address = hit.address ?? {};
   const street = [address.house_number, address.road].filter(Boolean).join(" ");
-  const suburb = localityOf(address);
+  const suburb = localityOf(address, hit.display_name);
   const state = abbreviateState(address.state);
   const region = [state, address.postcode].filter(Boolean).join(" ");
   if (street && suburb) {
@@ -115,7 +116,7 @@ export function mapNominatimHit(hit: NominatimHit): GeocodingResult | null {
   const longitude = Number(hit.lon);
   if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return null;
   const address = hit.address ?? {};
-  const suburb = localityOf(address);
+  const suburb = localityOf(address, hit.display_name);
   return {
     id: `nominatim:${hit.place_id ?? `${latitude},${longitude}`}`,
     displayAddress: formatNominatimDisplay(hit),
@@ -182,16 +183,57 @@ async function fetchNominatim(
   return mapNominatimHits(payload);
 }
 
-function localityOf(address: NominatimAddress): string | undefined {
+const METRO_LOCALITY =
+  /^(brisbane|city of brisbane|sydney|melbourne|perth|adelaide|hobart|darwin|canberra|greater brisbane)$/i;
+const REGION_PART =
+  /^(australia|queensland|new south wales|victoria|tasmania|western australia|south australia|australian capital territory|northern territory|qld|nsw|vic|tas|wa|sa|act|nt|\d{4})$/i;
+
+function localityOf(
+  address: NominatimAddress,
+  displayName?: string
+): string | undefined {
+  const specific =
+    firstSpecificLocality([
+      address.suburb,
+      address.neighbourhood,
+      address.town,
+      address.village,
+      address.hamlet,
+      address.city_district,
+    ]) ?? localityFromDisplayName(displayName, address.road);
+  if (specific) return specific;
   return (
-    address.suburb ||
-    address.town ||
-    address.village ||
-    address.hamlet ||
-    address.city_district ||
+    firstSpecificLocality([address.city, address.municipality]) ||
     address.city ||
     address.municipality
   );
+}
+
+function firstSpecificLocality(
+  values: Array<string | undefined>
+): string | undefined {
+  for (const value of values) {
+    const trimmed = value?.trim();
+    if (trimmed && !METRO_LOCALITY.test(trimmed)) return trimmed;
+  }
+  return undefined;
+}
+
+function localityFromDisplayName(
+  displayName: string | undefined,
+  road?: string
+): string | undefined {
+  if (!displayName) return undefined;
+  const street = road?.trim().toLowerCase();
+  for (const part of displayName.split(",").map((item) => item.trim())) {
+    if (!part || /^\d+[A-Za-z]?$/.test(part) || REGION_PART.test(part)) continue;
+    if (street && (part.toLowerCase() === street || part.toLowerCase().endsWith(` ${street}`))) {
+      continue;
+    }
+    if (METRO_LOCALITY.test(part)) continue;
+    return part;
+  }
+  return undefined;
 }
 
 function abbreviateState(state?: string): string | undefined {

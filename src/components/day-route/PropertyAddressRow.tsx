@@ -4,6 +4,10 @@ import { X } from "lucide-react";
 import { AddressSearchField } from "@/components/day-route/AddressSearchField";
 import { SamplingDurationField } from "@/components/day-route/SamplingDurationField";
 import { jobHasResolvedLocation } from "@/lib/geo";
+import {
+  addressRegionSuffix,
+  streetAndSuburbLabel,
+} from "@/lib/geocoding/address-label";
 import { samplingDurationOf } from "@/lib/routing/sampling";
 import { useDayRouteStore } from "@/lib/store/day-route-store";
 import type { Job } from "@/lib/types";
@@ -34,6 +38,8 @@ export function PropertyAddressRow({
   const duration = samplingDurationOf(job, {
     visitDurationMinutes: defaultDuration,
   });
+  const heading = streetAndSuburbLabel(job);
+  const region = addressRegionSuffix(job.resolvedDisplayAddress ?? job.address);
 
   return (
     <li className="soft-card space-y-2 px-3.5 py-3">
@@ -46,11 +52,11 @@ export function PropertyAddressRow({
             <div className="flex flex-wrap items-start justify-between gap-2">
               <div className="min-w-0">
                 <p className="truncate text-[13px] font-medium text-slate-900">
-                  {job.suburb || "Confirmed address"}
+                  {heading}
                 </p>
-                <p className="truncate text-[12px] text-slate-500">
-                  {job.resolvedDisplayAddress ?? job.address}
-                </p>
+                {region ? (
+                  <p className="truncate text-[12px] text-slate-500">{region}</p>
+                ) : null}
               </div>
               <button
                 type="button"
@@ -61,31 +67,13 @@ export function PropertyAddressRow({
               </button>
             </div>
           ) : (
-            <div className="grid gap-2 lg:grid-cols-[minmax(0,1fr)_auto]">
-              <input
-                value={job.address}
-                placeholder="12 Example St, Indooroopilly QLD"
-                aria-label={`Address ${index + 1}`}
-                onKeyDown={(event) => event.stopPropagation()}
-                onChange={(event) => updatePendingJob(job.id, event.target.value)}
-                className="h-8 min-w-0 rounded-md border border-hairline bg-white px-2 text-[13px] text-slate-700 outline-none hover:border-slate-300 focus:border-brand focus:text-slate-900 focus:ring-3 focus:ring-brand/15"
-              />
-              <details className="lg:w-[220px]">
-                <summary className="cursor-pointer list-none text-[11.5px] font-medium text-slate-500 hover:text-brand">
-                  Find address
-                </summary>
-                <div className="mt-2">
-                  <AddressSearchField
-                    query={job.address}
-                    onQueryChange={(value) => updatePendingJob(job.id, value)}
-                    onPick={(result) => confirmGeocodedAddress(job.id, result)}
-                    onNotFound={() => markAddressNotFound(job.id)}
-                    inputAriaLabel={`Find address ${index + 1}`}
-                    findLabel="Find address"
-                  />
-                </div>
-              </details>
-            </div>
+            <AddressSearchField
+              query={job.address}
+              onQueryChange={(value) => updatePendingJob(job.id, value)}
+              onPick={(result) => confirmGeocodedAddress(job.id, result)}
+              onNotFound={() => markAddressNotFound(job.id)}
+              inputAriaLabel={`Address ${index + 1}`}
+            />
           )}
 
           {stale ? (
@@ -110,7 +98,7 @@ export function PropertyAddressRow({
         </div>
         <button
           type="button"
-          aria-label={`Remove ${job.suburb ?? "property"}`}
+          aria-label={`Remove ${heading}`}
           title="Remove property"
           onClick={() => removePendingJob(job.id)}
           className="mt-1 flex size-7 shrink-0 items-center justify-center rounded-md text-slate-300 transition-colors hover:bg-rose-50 hover:text-rose-600"

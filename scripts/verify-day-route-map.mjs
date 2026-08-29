@@ -81,8 +81,7 @@ async function main() {
     throw new Error(`Disallowed network requests: ${blocked.join(", ")}`);
   }
 
-  await page.goto(`${BASE}/team`);
-  await page.locator('[data-view="map"]').click();
+  await page.goto(`${BASE}/team/map`);
   await page
     .locator('[data-testid="maplibre-canvas"][data-map-ready="true"]')
     .waitFor({ timeout: 25000 });

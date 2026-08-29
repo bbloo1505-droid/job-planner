@@ -3,6 +3,7 @@
 import { Clock } from "lucide-react";
 import { formatDisplayTime } from "@/lib/routing/round-time";
 import { samplingDurationOf } from "@/lib/routing/sampling";
+import { streetAndSuburbLabel } from "@/lib/geocoding/address-label";
 import { useDayRouteStore } from "@/lib/store/day-route-store";
 
 export function SuggestedBookingTimes() {
@@ -44,7 +45,7 @@ export function SuggestedBookingTimes() {
               </span>
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-[13.5px] font-semibold text-slate-800">
-                  {job.suburb || job.address}
+                  {streetAndSuburbLabel(job)}
                 </span>
                 <span className="mt-0.5 inline-flex items-center gap-1 text-[11.5px] text-slate-400">
                   <Clock className="size-3" strokeWidth={1.75} />

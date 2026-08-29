@@ -6,6 +6,7 @@ import { BookingStatusText } from "@/components/day-route/BookingStatusBadge";
 import { Button } from "@/components/ui/button";
 import { SamplingDurationField } from "@/components/day-route/SamplingDurationField";
 import { jobHasResolvedLocation } from "@/lib/geo";
+import { streetAndSuburbLabel } from "@/lib/geocoding/address-label";
 import { formatDisplayTime } from "@/lib/routing/round-time";
 import { samplingDurationOf } from "@/lib/routing/sampling";
 import { useDayRouteStore } from "@/lib/store/day-route-store";
@@ -189,7 +190,7 @@ function StopEditorForm({
           </p>
           <h2 className="mt-1 truncate text-[15px] font-semibold tracking-tight text-slate-900">
             {jobHasResolvedLocation(job)
-              ? job.suburb
+              ? streetAndSuburbLabel(job)
               : "Location not resolved"}
           </h2>
           <p className="truncate text-[12px] text-slate-500">

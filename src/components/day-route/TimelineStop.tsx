@@ -7,6 +7,7 @@ import { BookingStatusText } from "@/components/day-route/BookingStatusBadge";
 import { TIMELINE_GRID } from "@/components/day-route/timeline-grid";
 import { constraintLabel } from "@/lib/format";
 import { jobHasResolvedLocation } from "@/lib/geo";
+import { streetAndSuburbLabel } from "@/lib/geocoding/address-label";
 import { formatDisplayTime } from "@/lib/routing/round-time";
 import { samplingDurationOf } from "@/lib/routing/sampling";
 import { useDayRouteStore } from "@/lib/store/day-route-store";
@@ -104,7 +105,7 @@ export function TimelineStop({
               resolved ? "text-slate-900" : "text-amber-800"
             )}
           >
-            {resolved ? job.suburb || "Stop" : "Location not resolved"}
+            {resolved ? streetAndSuburbLabel(job) : "Location not resolved"}
           </p>
           <span className="shrink-0 pr-5 text-[11px] text-slate-400 tabular-nums">
             {duration} min sampling
@@ -148,7 +149,7 @@ export function TimelineStop({
 
         <button
           type="button"
-          aria-label={`Reorder ${job.suburb || "stop"}`}
+          aria-label={`Reorder ${streetAndSuburbLabel(job)}`}
           title="Drag to reorder"
           {...attributes}
           {...listeners}
