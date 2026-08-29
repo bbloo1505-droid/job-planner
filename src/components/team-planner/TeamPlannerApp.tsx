@@ -13,17 +13,22 @@ import {
   type DragMoveEvent,
   type DragStartEvent,
 } from "@dnd-kit/core";
-import { ChevronLeft, ChevronRight, Undo2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, SlidersHorizontal, Undo2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { JobEditor } from "@/components/team-planner/JobEditor";
 import { MatchPanel } from "@/components/team-planner/MatchPanel";
 import { PlanningBoard } from "@/components/team-planner/PlanningBoard";
+import { PlannerSideDock } from "@/components/team-planner/PlannerSideDock";
 import { UnassignedPanel, matchesLite } from "@/components/team-planner/UnassignedPanel";
 import { WorkCategoryKey } from "@/components/team-planner/WorkCategoryKey";
 import { WorkCategoryMenu } from "@/components/team-planner/WorkCategoryMenu";
 import { Button } from "@/components/ui/button";
 import { AppShell } from "@/components/layout/AppShell";
-import { allocationForJob, useTeamPlannerStore } from "@/lib/store/team-planner-store";
+import {
+  allocationForJob,
+  unassignedJobs,
+  useTeamPlannerStore,
+} from "@/lib/store/team-planner-store";
 import { monthDays, monthLabel } from "@/lib/team/month";
 import { workCategoryMeta } from "@/lib/team/work-category";
 import { weekDays, weekRangeLabel } from "@/lib/team/week";
@@ -73,6 +78,9 @@ export function TeamPlannerApp() {
 
   const rootRef = useRef<HTMLDivElement>(null);
   const [activeJobId, setActiveJobId] = useState<string | null>(null);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [sideOpen, setSideOpen] = useState(false);
+  const [openedForJob, setOpenedForJob] = useState<string | null>(null);
   const [categoryMenu, setCategoryMenu] = useState<{
     jobId: string;
     x: number;
@@ -88,6 +96,19 @@ export function TeamPlannerApp() {
   const selectedIsUnassigned = Boolean(
     selectedJobId && !allocationForJob({ allocations }, selectedJobId)
   );
+  const unassignedCount = unassignedJobs({ jobs, allocations }).filter((job) =>
+    matchesLite(job, search, priorityFilter, dueThisWeekOnly, weekStart)
+  ).length;
+  const filtersActive =
+    Boolean(search.trim()) ||
+    consultantFilter !== "all" ||
+    priorityFilter !== "all" ||
+    dueThisWeekOnly ||
+    (boardView === "month" && showWeekends);
+  if (selectedJobId && selectedJobId !== openedForJob) {
+    setOpenedForJob(selectedJobId);
+    setSideOpen(true);
+  }
 
   const openCategoryMenu = useCallback((jobId: string, position: { x: number; y: number }) => {
     setCategoryMenu({ jobId, ...position });
@@ -312,6 +333,20 @@ export function TeamPlannerApp() {
                 </div>
               </div>
               <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  data-testid="planner-filters-toggle"
+                  aria-expanded={filtersOpen}
+                  onClick={() => setFiltersOpen((open) => !open)}
+                >
+                  <SlidersHorizontal />
+                  Filters
+                  {filtersActive ? (
+                    <span className="ml-0.5 size-1.5 rounded-full bg-brand" aria-hidden />
+                  ) : null}
+                </Button>
                 <WorkCategoryKey />
                 <Button
                   type="button"
@@ -325,61 +360,63 @@ export function TeamPlannerApp() {
                 </Button>
               </div>
             </div>
-            <div className="mt-2 grid grid-cols-1 gap-1.5 min-[480px]:grid-cols-2 md:mt-2 md:flex md:flex-wrap md:items-center md:gap-2">
-              <input
-                className="field-input min-[480px]:col-span-2 md:h-7 md:max-w-[220px]"
-                placeholder="Search location or job no."
-                aria-label="Search jobs"
-                data-testid="planner-search"
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-              />
-              <select
-                className="field-input md:h-7 md:w-[140px]"
-                value={consultantFilter}
-                onChange={(event) => setConsultantFilter(event.target.value)}
-              >
-                <option value="all">All consultants</option>
-                {consultants.map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {item.name}
-                  </option>
-                ))}
-              </select>
-              <select
-                className="field-input md:h-7 md:w-[120px]"
-                value={priorityFilter}
-                onChange={(event) =>
-                  setPriorityFilter(event.target.value as typeof priorityFilter)
-                }
-              >
-                <option value="all">All priority</option>
-                <option value="urgent">Urgent</option>
-                <option value="high">High</option>
-                <option value="normal">Normal</option>
-                <option value="low">Low</option>
-              </select>
-              <div className="flex flex-wrap items-center gap-3 min-[480px]:col-span-2 md:contents">
-                <label className="flex items-center gap-1.5 text-[12px] text-slate-600">
-                  <input
-                    type="checkbox"
-                    checked={dueThisWeekOnly}
-                    onChange={(event) => setDueThisWeekOnly(event.target.checked)}
-                  />
-                  Due this week
-                </label>
-                {boardView === "month" ? (
+            {filtersOpen ? (
+              <div className="mt-2 grid grid-cols-1 gap-1.5 min-[480px]:grid-cols-2 md:flex md:flex-wrap md:items-center md:gap-2">
+                <input
+                  className="field-input min-[480px]:col-span-2 md:h-7 md:max-w-[220px]"
+                  placeholder="Search location or job no."
+                  aria-label="Search jobs"
+                  data-testid="planner-search"
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                />
+                <select
+                  className="field-input md:h-7 md:w-[140px]"
+                  value={consultantFilter}
+                  onChange={(event) => setConsultantFilter(event.target.value)}
+                >
+                  <option value="all">All consultants</option>
+                  {consultants.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.name}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  className="field-input md:h-7 md:w-[120px]"
+                  value={priorityFilter}
+                  onChange={(event) =>
+                    setPriorityFilter(event.target.value as typeof priorityFilter)
+                  }
+                >
+                  <option value="all">All priority</option>
+                  <option value="urgent">Urgent</option>
+                  <option value="high">High</option>
+                  <option value="normal">Normal</option>
+                  <option value="low">Low</option>
+                </select>
+                <div className="flex flex-wrap items-center gap-3 min-[480px]:col-span-2 md:contents">
                   <label className="flex items-center gap-1.5 text-[12px] text-slate-600">
                     <input
                       type="checkbox"
-                      checked={showWeekends}
-                      onChange={(event) => setShowWeekends(event.target.checked)}
+                      checked={dueThisWeekOnly}
+                      onChange={(event) => setDueThisWeekOnly(event.target.checked)}
                     />
-                    Show weekends
+                    Due this week
                   </label>
-                ) : null}
+                  {boardView === "month" ? (
+                    <label className="flex items-center gap-1.5 text-[12px] text-slate-600">
+                      <input
+                        type="checkbox"
+                        checked={showWeekends}
+                        onChange={(event) => setShowWeekends(event.target.checked)}
+                      />
+                      Show weekends
+                    </label>
+                  ) : null}
+                </div>
               </div>
-            </div>
+            ) : null}
           </header>
 
           <div className="relative flex min-h-0 flex-1 flex-col md:flex-row">
@@ -401,12 +438,18 @@ export function TeamPlannerApp() {
               </div>
             </div>
 
-            <aside
-              className={cn(
-                "flex shrink-0 flex-col bg-white",
-                "h-[min(34vh,280px)] w-full border-t border-slate-200/80",
-                "md:h-auto md:w-[min(34vw,320px)] md:min-w-[260px] md:max-w-[340px] md:border-t-0 md:border-l"
-              )}
+            <PlannerSideDock
+              open={sideOpen}
+              onOpenChange={setSideOpen}
+              label={
+                selectedIsUnassigned
+                  ? "Match job"
+                  : selectedJobId
+                    ? "Job details"
+                    : "Unassigned jobs"
+              }
+              count={selectedJobId ? undefined : unassignedCount}
+              acceptUnassign={!selectedIsUnassigned}
             >
               {selectedIsUnassigned ? (
                 <div className="min-h-0 flex-1 overflow-hidden">
@@ -426,11 +469,11 @@ export function TeamPlannerApp() {
                         : "min-h-0 flex-1"
                     }
                   >
-                    <UnassignedPanel onCategoryMenu={openCategoryMenu} />
+                    <UnassignedPanel embedded onCategoryMenu={openCategoryMenu} />
                   </div>
                 </>
               )}
-            </aside>
+            </PlannerSideDock>
           </div>
         </div>
         <DragOverlay>

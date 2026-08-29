@@ -252,3 +252,13 @@ export function formatAdditionalTravel(minutes: number): string {
   if (rest === 0) return `+${hours}h estimated travel`;
   return `+${hours}h ${rest}m estimated travel`;
 }
+
+export function formatTravelFromExisting(minutes: number, location: string): string {
+  const rounded = Math.max(0, Math.round(minutes));
+  const from = location && location !== "—" ? ` from ${location}` : "";
+  if (rounded < 60) return `${rounded} min${from}`;
+  const hours = Math.floor(rounded / 60);
+  const rest = rounded % 60;
+  if (rest === 0) return `${hours}h${from}`;
+  return `${hours}h ${rest}m${from}`;
+}

@@ -116,8 +116,13 @@ export interface RouteStop {
   order: number;
   suggestedArrival?: string;
   suggestedDeparture?: string;
+  /** Unrounded earliest arrival before booking-interval rounding or a later constraint. */
+  earliestArrival?: string;
   travelMinutesFromPrevious?: number;
   travelMetersFromPrevious?: number;
+  accessBufferMinutes?: number;
+  /** Idle time when a fixed booking is later than the earliest arrival. */
+  waitingMinutes?: number;
   isManuallyOrdered?: boolean;
   conflict?: StopConflict;
 }
@@ -163,6 +168,7 @@ export interface OptimiseResult {
   stops: RouteStop[];
   conflicts: StopConflict[];
   totalTravelMinutes: number;
+  totalAccessMinutes: number;
   returnTravelMinutes: number;
   returnTravelMeters?: number;
   exceedsWorkingDay: boolean;

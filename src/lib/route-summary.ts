@@ -1,5 +1,7 @@
 import { resolvedPointOf } from "@/lib/geo";
+import { clampAccessBuffer } from "@/lib/routing/access-buffer";
 import { addMinutes, timeToMinutes } from "@/lib/routing/round-time";
+import { totalSamplingMinutes } from "@/lib/routing/sampling";
 import { estimateTravelMinutesOrNull } from "@/lib/routing/travel";
 import type { DayPlanSettings, Job, RouteStop } from "@/lib/types";
 
@@ -13,7 +15,7 @@ export function returnLegMinutes(
     ? resolvedPointOf(lastJob.latitude, lastJob.longitude, lastJob.suburb)
     : null;
   const to = resolvedPointOf(settings.finishLat, settings.finishLng);
-  return estimateTravelMinutesOrNull(from, to, settings.travelBufferMinutes);
+  return estimateTravelMinutesOrNull(from, to, 0);
 }
 
 export function totalDrivingMinutes(
@@ -46,6 +48,49 @@ export function formatDistanceMeters(meters: number | null | undefined): string 
   return `${km.toFixed(1)} km`;
 }
 
+export function returnAccessMinutes(
+  settings: DayPlanSettings,
+  lastJob: Job | undefined,
+  storedReturnMinutes?: number
+): number {
+  const road = returnLegMinutes(settings, lastJob, storedReturnMinutes);
+  if (road == null) return 0;
+  return clampAccessBuffer(settings.travelBufferMinutes);
+}
+
+export function totalAccessAllowanceMinutes(
+  settings: DayPlanSettings,
+  stops: RouteStop[],
+  jobs: Record<string, Job>,
+  storedReturnMinutes?: number
+): number {
+  const fromStops = stops.reduce(
+    (sum, stop) => sum + (stop.accessBufferMinutes ?? 0),
+    0
+  );
+  const lastStop = stops[stops.length - 1];
+  const lastJob = lastStop ? jobs[lastStop.jobId] : undefined;
+  return fromStops + returnAccessMinutes(settings, lastJob, storedReturnMinutes);
+}
+
+export function totalWaitingMinutes(stops: RouteStop[]): number {
+  return stops.reduce((sum, stop) => sum + (stop.waitingMinutes ?? 0), 0);
+}
+
+export function totalPlannedDayMinutes(
+  settings: DayPlanSettings,
+  stops: RouteStop[],
+  jobs: Record<string, Job>,
+  storedReturnMinutes?: number
+): number {
+  return (
+    totalDrivingMinutes(settings, stops, jobs, storedReturnMinutes) +
+    totalSamplingMinutes(stops, jobs, settings) +
+    totalAccessAllowanceMinutes(settings, stops, jobs, storedReturnMinutes) +
+    totalWaitingMinutes(stops)
+  );
+}
+
 /** Clock time the consultant is back at the finish location, or null if none. */
 export function plannedReturnTime(
   settings: DayPlanSettings,
@@ -58,7 +103,8 @@ export function plannedReturnTime(
   if (!lastStop?.suggestedDeparture || !lastJob) return null;
   const returnMinutes = returnLegMinutes(settings, lastJob, storedReturnMinutes);
   if (returnMinutes == null) return null;
-  return addMinutes(lastStop.suggestedDeparture, returnMinutes);
+  const access = returnAccessMinutes(settings, lastJob, storedReturnMinutes);
+  return addMinutes(lastStop.suggestedDeparture, returnMinutes + access);
 }
 
 /**

@@ -57,6 +57,7 @@ async function main() {
     throw new Error("Expected requests to tiles.openfreemap.org");
   }
 
+  await page.getByTestId("map-filters-toggle").click();
   await page.locator('[data-geo-day="2026-09-03"]').click();
   await page.locator('[data-testid="fit-jobs"]').click();
   await page.getByLabel("Search jobs on map").fill("Nambour");

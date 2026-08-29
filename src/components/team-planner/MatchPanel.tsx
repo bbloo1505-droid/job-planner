@@ -5,7 +5,7 @@ import { format, parseISO } from "date-fns";
 import { Button } from "@/components/ui/button";
 import {
   consultantFirstName,
-  formatAdditionalTravel,
+  formatTravelFromExisting,
   rankAllocationCandidates,
 } from "@/lib/geo/rank-allocation-candidates";
 import { isoDate, weekDays } from "@/lib/team/week";
@@ -95,7 +95,7 @@ export function MatchPanel() {
           Best allocation options
         </p>
         <p className="mt-0.5 text-[10.5px] text-slate-400">
-          Prototype travel estimate — not live road routing
+          From nearest existing job — not live road routing
         </p>
         {candidates.length === 0 ? (
           <p className="mt-3 text-[12px] text-slate-500">
@@ -163,7 +163,7 @@ export function MatchPanel() {
                               Best insertion: {item.insertionLabel}
                             </span>
                             <span className="mt-0.5 block text-[11.5px] tabular-nums text-slate-500">
-                              {formatAdditionalTravel(item.additionalTravelMinutes)}
+                              {formatTravelFromExisting(item.candidateScore, item.existingLocation)}
                             </span>
                           </>
                         ) : (

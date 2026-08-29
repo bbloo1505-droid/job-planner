@@ -12,14 +12,18 @@ import {
 import { useCallback, useState } from "react";
 import { AppShell } from "@/components/layout/AppShell";
 import { MatchPanel } from "@/components/team-planner/MatchPanel";
+import { PlannerSideDock } from "@/components/team-planner/PlannerSideDock";
 import { ScheduledJobPanel } from "@/components/team-planner/ScheduledJobPanel";
 import { TeamMap } from "@/components/team-planner/TeamMap";
-import { UnassignedPanel } from "@/components/team-planner/UnassignedPanel";
+import { UnassignedPanel, matchesLite } from "@/components/team-planner/UnassignedPanel";
 import { WorkCategoryMenu } from "@/components/team-planner/WorkCategoryMenu";
-import { allocationForJob, useTeamPlannerStore } from "@/lib/store/team-planner-store";
+import {
+  allocationForJob,
+  unassignedJobs,
+  useTeamPlannerStore,
+} from "@/lib/store/team-planner-store";
 import { weekRangeLabel } from "@/lib/team/week";
 import type { WorkCategory } from "@/lib/types";
-import { cn } from "@/lib/utils";
 
 const preferPointer: CollisionDetection = (args) => {
   const hits = pointerWithin(args);
@@ -41,12 +45,26 @@ export function PlannerMapApp() {
     y: number;
   } | null>(null);
 
+  const [sideOpen, setSideOpen] = useState(false);
+  const [openedForJob, setOpenedForJob] = useState<string | null>(null);
+  const search = useTeamPlannerStore((state) => state.search);
+  const priorityFilter = useTeamPlannerStore((state) => state.priorityFilter);
+  const dueThisWeekOnly = useTeamPlannerStore((state) => state.dueThisWeekOnly);
+
   const selectedIsUnassigned = Boolean(
     selectedJobId && !allocationForJob({ allocations }, selectedJobId)
   );
+  const unassignedCount = unassignedJobs({ jobs, allocations }).filter((job) =>
+    matchesLite(job, search, priorityFilter, dueThisWeekOnly, weekStart)
+  ).length;
   const openCategoryMenu = useCallback((jobId: string, position: { x: number; y: number }) => {
     setCategoryMenu({ jobId, ...position });
   }, []);
+
+  if (selectedJobId && selectedJobId !== openedForJob) {
+    setOpenedForJob(selectedJobId);
+    setSideOpen(true);
+  }
 
   return (
     <AppShell>
@@ -59,23 +77,30 @@ export function PlannerMapApp() {
           className="flex h-full min-h-0 flex-col bg-canvas"
           data-testid="planner-map-app"
         >
-          <header className="shrink-0 border-b border-slate-200/70 bg-white px-4 py-3 md:px-5 md:py-3.5">
-            <p className="eyebrow">Planner Map</p>
-            <h1 className="mt-1 text-[18px] leading-tight font-semibold tracking-tight text-slate-900">
-              Allocation map
-            </h1>
-            <p className="mt-0.5 text-[13px] text-slate-500">{weekRangeLabel(weekStart)}</p>
+          <header className="shrink-0 border-b border-slate-200/70 bg-white px-4 py-2 md:px-5 md:py-3">
+            <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
+              <h1 className="text-[16px] leading-tight font-semibold tracking-tight text-slate-900 md:text-[18px]">
+                Allocation map
+              </h1>
+              <p className="text-[12.5px] text-slate-500">{weekRangeLabel(weekStart)}</p>
+            </div>
           </header>
           <div className="flex min-h-0 flex-1 flex-col md:flex-row">
-            <div className="min-h-[42vh] min-w-0 flex-1 md:min-h-0">
+            <div className="min-h-0 min-w-0 flex-1">
               <TeamMap variant="full" />
             </div>
-            <aside
-              className={cn(
-                "flex shrink-0 flex-col border-hairline bg-white",
-                "h-[min(34vh,280px)] w-full border-t",
-                "md:h-auto md:w-[min(34vw,320px)] md:min-w-[260px] md:max-w-[340px] md:border-t-0 md:border-l"
-              )}
+            <PlannerSideDock
+              open={sideOpen}
+              onOpenChange={setSideOpen}
+              label={
+                selectedIsUnassigned
+                  ? "Match job"
+                  : selectedJobId
+                    ? "Job details"
+                    : "Unassigned jobs"
+              }
+              count={selectedJobId ? undefined : unassignedCount}
+              acceptUnassign={!selectedIsUnassigned}
             >
               {selectedIsUnassigned ? (
                 <div className="min-h-0 flex-1 overflow-hidden">
@@ -85,10 +110,10 @@ export function PlannerMapApp() {
                 <ScheduledJobPanel />
               ) : (
                 <div className="min-h-0 flex-1 overflow-hidden">
-                  <UnassignedPanel onCategoryMenu={openCategoryMenu} />
+                  <UnassignedPanel embedded onCategoryMenu={openCategoryMenu} />
                 </div>
               )}
-            </aside>
+            </PlannerSideDock>
           </div>
         </div>
         {categoryMenu ? (

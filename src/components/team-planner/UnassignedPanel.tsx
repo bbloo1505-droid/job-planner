@@ -7,8 +7,10 @@ import { cn } from "@/lib/utils";
 
 export function UnassignedPanel({
   onCategoryMenu,
+  embedded = false,
 }: {
   onCategoryMenu: (jobId: string, position: { x: number; y: number }) => void;
+  embedded?: boolean;
 }) {
   const jobs = useTeamPlannerStore((state) => state.jobs);
   const allocations = useTeamPlannerStore((state) => state.allocations);
@@ -32,17 +34,20 @@ export function UnassignedPanel({
       ref={setNodeRef}
       data-testid="unassigned-panel"
       className={cn(
-        "flex h-full min-h-0 flex-col border-l border-slate-200/80 bg-[#f8f9fb]",
+        "flex h-full min-h-0 flex-col bg-[#f8f9fb]",
+        !embedded && "border-l border-slate-200/80",
         isOver && "bg-brand/[0.04]"
       )}
     >
-      <div className="flex items-center justify-between px-4 py-3.5">
-        <h2 className="panel-heading">Unassigned jobs</h2>
-        <span className="rounded-full bg-white px-2 py-0.5 text-[11px] font-medium text-slate-500 tabular-nums shadow-sm">
-          {items.length}
-        </span>
-      </div>
-      <div className="min-h-0 flex-1 space-y-2 overflow-auto px-3 pb-3">
+      {embedded ? null : (
+        <div className="flex items-center justify-between px-4 py-3.5">
+          <h2 className="panel-heading">Unassigned jobs</h2>
+          <span className="rounded-full bg-white px-2 py-0.5 text-[11px] font-medium text-slate-500 tabular-nums shadow-sm">
+            {items.length}
+          </span>
+        </div>
+      )}
+      <div className="min-h-0 flex-1 space-y-2 overflow-auto px-3 py-3">
         {items.length === 0 ? (
           <p className="px-1 py-8 text-center text-[12px] text-slate-400">
             Nothing in the queue.

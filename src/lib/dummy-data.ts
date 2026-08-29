@@ -17,7 +17,7 @@ export const DEFAULT_SETTINGS: DayPlanSettings = {
   finishLng: 153.0056,
   workingHoursEnd: "16:00",
   visitDurationMinutes: 20,
-  travelBufferMinutes: 10,
+  travelBufferMinutes: 5,
   roundToMinutes: 15,
 };
 

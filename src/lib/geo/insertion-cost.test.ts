@@ -4,6 +4,7 @@ import { geocodeAddress } from "@/lib/geo";
 import {
   calculateBestInsertion,
   formatAdditionalTravel,
+  formatTravelFromExisting,
 } from "@/lib/geo/insertion-cost";
 import { rankAllocationCandidates } from "@/lib/geo/rank-allocation-candidates";
 import type { Allocation, Consultant, Job } from "@/lib/types";
@@ -178,7 +179,7 @@ describe("calculateBestInsertion", () => {
 });
 
 describe("rankAllocationCandidates insertion cost", () => {
-  it("prefers on-path insertion over a geographically closer detour", () => {
+  it("prefers the consultant whose existing work is closer to the site", () => {
     const nambour = job("new", "3 Mock St, Nambour", { estimatedMinutes: 30 });
     const closeThenFar = job("close", "11 Example Pde, Maroochydore", { estimatedMinutes: 30 });
     const farSouth = job("south", "40 Mock Ave, Gold Coast", { estimatedMinutes: 30 });
@@ -204,12 +205,12 @@ describe("rankAllocationCandidates insertion cost", () => {
       allocations,
       workingDays: ["2026-09-03"],
     });
-    assert.equal(ranked[0].consultantId, "c-b");
+    assert.equal(ranked[0].consultantId, "c-a");
     assert.equal(ranked[0].feasible, true);
-    const closer = ranked.find((item) => item.consultantId === "c-a");
-    assert.ok(closer);
-    assert.ok(closer.distanceKm < ranked[0].distanceKm);
-    assert.ok(ranked[0].additionalTravelMinutes < closer.additionalTravelMinutes);
+    const further = ranked.find((item) => item.consultantId === "c-b");
+    assert.ok(further);
+    assert.ok(ranked[0].distanceKm < further.distanceKm);
+    assert.ok(ranked[0].candidateScore < further.candidateScore);
   });
 
   it("honours a one-day due window", () => {
@@ -283,5 +284,7 @@ describe("rankAllocationCandidates insertion cost", () => {
     assert.equal(formatAdditionalTravel(18), "+18 min estimated travel");
     assert.equal(formatAdditionalTravel(72), "+1h 12m estimated travel");
     assert.equal(formatAdditionalTravel(120), "+2h estimated travel");
+    assert.equal(formatTravelFromExisting(18, "Caboolture"), "18 min from Caboolture");
+    assert.equal(formatTravelFromExisting(72, "Maroochydore"), "1h 12m from Maroochydore");
   });
 });

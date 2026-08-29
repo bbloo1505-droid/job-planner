@@ -3,6 +3,7 @@
 import { format } from "date-fns";
 import { ArrowRight, ChevronDown, MapPin, Plus } from "lucide-react";
 import { useState } from "react";
+import { DayTimingSettings } from "@/components/day-route/DayTimingSettings";
 import { PropertyAddressRow } from "@/components/day-route/PropertyAddressRow";
 import { ResolutionProgress } from "@/components/day-route/ResolutionProgress";
 import { Button } from "@/components/ui/button";
@@ -99,6 +100,7 @@ export function PlanDayForm() {
               />
             </span>
           </label>
+          <DayTimingSettings />
         </div>
       </header>
 

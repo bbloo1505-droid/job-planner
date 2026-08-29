@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { format } from "date-fns";
+import { SlidersHorizontal } from "lucide-react";
 import { AllocationMap } from "@/components/map/providers/AllocationMap";
 import { DevMapProviderSwitch } from "@/components/map/providers/DevMapProviderSwitch";
 import { consultantFirstName } from "@/lib/geo/rank-allocation-candidates";
@@ -55,6 +56,9 @@ export function TeamMap({ variant }: { variant: "full" | "split" }) {
   const setSearch = useTeamPlannerStore((state) => state.setSearch);
   const mapRuntime = useMapProviderRuntime();
   const padding = variant === "full" ? FULL_PAD : SPLIT_PAD;
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const hiddenCount = mapHiddenConsultantIds.length;
+  const filtersActive = Boolean(search.trim()) || hiddenCount > 0;
 
   const days = useMemo(() => weekDays(weekStart), [weekStart]);
   const workingDays = useMemo(() => days.map(isoDate), [days]);
@@ -136,139 +140,168 @@ export function TeamMap({ variant }: { variant: "full" | "split" }) {
     >
       <div className="shrink-0 border-b border-hairline px-3 py-1.5">
         <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
-          <div className="flex flex-wrap items-center gap-1" role="tablist" aria-label="Map period">
+          <div className="flex min-w-0 items-center gap-2">
             <button
               type="button"
-              role="tab"
-              aria-selected={geoScope !== "week" && geoScope !== "month"}
-              data-geo-period="day"
-              onClick={() => setGeoScope(selectedDate ?? workingDays[0] ?? weekStart)}
+              data-testid="map-filters-toggle"
+              aria-expanded={filtersOpen}
+              onClick={() => setFiltersOpen((open) => !open)}
               className={cn(
-                "h-6 rounded px-2 text-[10.5px] font-semibold tracking-wide",
-                geoScope !== "week" && geoScope !== "month"
-                  ? "bg-navy text-white"
-                  : "bg-slate-50 text-slate-600 hover:bg-slate-100"
+                "inline-flex h-7 items-center gap-1.5 rounded-md border border-hairline px-2 text-[12px] font-medium",
+                filtersOpen ? "bg-navy text-white" : "bg-white text-slate-700 hover:bg-slate-50"
               )}
             >
-              Selected day
+              <SlidersHorizontal className="size-3.5" strokeWidth={1.75} />
+              Filters
+              {filtersActive ? (
+                <span className="size-1.5 rounded-full bg-brand" aria-hidden />
+              ) : null}
             </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={geoScope === "week"}
-              data-geo-day="week"
-              data-geo-period="week"
-              onClick={() => setGeoScope("week")}
-              className={cn(
-                "h-6 rounded px-2 text-[10.5px] font-semibold tracking-wide",
-                geoScope === "week" ? "bg-navy text-white" : "bg-slate-50 text-slate-600 hover:bg-slate-100"
-              )}
-            >
-              Selected week
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={geoScope === "month"}
-              data-geo-period="month"
-              onClick={() => setGeoScope("month")}
-              className={cn(
-                "h-6 rounded px-2 text-[10.5px] font-semibold tracking-wide",
-                geoScope === "month" ? "bg-navy text-white" : "bg-slate-50 text-slate-600 hover:bg-slate-100"
-              )}
-            >
-              Whole month
-            </button>
-            <span className="mx-1 h-4 w-px bg-hairline" />
-            {days.map((day) => {
-              const iso = isoDate(day);
-              const label = format(day, "EEE").toUpperCase();
-              const active = geoScope === iso;
-              return (
+            <p className="truncate text-[12px] text-slate-500">
+              {geoScope === "week"
+                ? "Selected week"
+                : geoScope === "month"
+                  ? "Whole month"
+                  : format(new Date(`${geoScope}T00:00:00`), "EEE d MMM")}
+            </p>
+          </div>
+          <DevMapProviderSwitch />
+        </div>
+        {filtersOpen ? (
+          <>
+            <div className="mt-1.5 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+              <div className="flex flex-wrap items-center gap-1" role="tablist" aria-label="Map period">
                 <button
-                  key={iso}
                   type="button"
                   role="tab"
-                  aria-selected={active}
-                  data-geo-day={iso}
-                  onClick={() => setGeoScope(iso)}
+                  aria-selected={geoScope !== "week" && geoScope !== "month"}
+                  data-geo-period="day"
+                  onClick={() => setGeoScope(selectedDate ?? workingDays[0] ?? weekStart)}
                   className={cn(
                     "h-6 rounded px-2 text-[10.5px] font-semibold tracking-wide",
-                    active ? "bg-navy text-white" : "bg-slate-50 text-slate-600 hover:bg-slate-100"
+                    geoScope !== "week" && geoScope !== "month"
+                      ? "bg-navy text-white"
+                      : "bg-slate-50 text-slate-600 hover:bg-slate-100"
                   )}
                 >
-                  {label}
+                  Selected day
                 </button>
-              );
-            })}
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <DevMapProviderSwitch />
-            {variant === "full" || variant === "split" ? (
-              <input
-                className="field-input h-9 w-full max-w-none text-base md:h-6 md:max-w-[180px] md:text-[12px]"
-                placeholder="Search location or job no."
-                value={search}
-                onChange={(event) => {
-                  const value = event.target.value;
-                  setSearch(value);
-                  const hits = searchMapMarkers(model.markers, value);
-                  if (hits.length === 1) selectJob(hits[0].id);
-                }}
-                aria-label="Search jobs on map"
-              />
-            ) : null}
-          </div>
-        </div>
-        <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
-          {consultants.map((consultant) => {
-            const hidden = mapHiddenConsultantIds.includes(consultant.id);
-            const focused = selectedConsultantId === consultant.id;
-            return (
-              <div
-                key={consultant.id}
-                className={cn(
-                  "flex items-center gap-1 rounded px-1 py-0.5 text-[11.5px]",
-                  focused ? "bg-navy/[0.08] font-semibold text-slate-900" : "text-slate-600"
-                )}
-              >
-                <input
-                  type="checkbox"
-                  checked={!hidden}
-                  data-consultant-filter={consultant.id}
-                  onChange={() => toggleMapConsultantHidden(consultant.id)}
-                  className="size-3"
-                />
                 <button
                   type="button"
-                  data-consultant-name={consultant.id}
-                  onClick={() => {
-                    if (hidden) toggleMapConsultantHidden(consultant.id);
-                    selectConsultant(consultant.id);
-                  }}
-                  className="flex items-center gap-1"
+                  role="tab"
+                  aria-selected={geoScope === "week"}
+                  data-geo-day="week"
+                  data-geo-period="week"
+                  onClick={() => setGeoScope("week")}
+                  className={cn(
+                    "h-6 rounded px-2 text-[10.5px] font-semibold tracking-wide",
+                    geoScope === "week" ? "bg-navy text-white" : "bg-slate-50 text-slate-600 hover:bg-slate-100"
+                  )}
                 >
-                  <span
-                    className="flex size-[18px] items-center justify-center rounded-full text-[8px] font-bold text-white"
-                    style={{ backgroundColor: consultant.displayColour }}
-                  >
-                    {consultant.initials}
-                  </span>
-                  {consultantFirstName(consultant.name)}
+                  Selected week
                 </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={geoScope === "month"}
+                  data-geo-period="month"
+                  onClick={() => setGeoScope("month")}
+                  className={cn(
+                    "h-6 rounded px-2 text-[10.5px] font-semibold tracking-wide",
+                    geoScope === "month" ? "bg-navy text-white" : "bg-slate-50 text-slate-600 hover:bg-slate-100"
+                  )}
+                >
+                  Whole month
+                </button>
+                <span className="mx-1 h-4 w-px bg-hairline" />
+                {days.map((day) => {
+                  const iso = isoDate(day);
+                  const label = format(day, "EEE").toUpperCase();
+                  const active = geoScope === iso;
+                  return (
+                    <button
+                      key={iso}
+                      type="button"
+                      role="tab"
+                      aria-selected={active}
+                      data-geo-day={iso}
+                      onClick={() => setGeoScope(iso)}
+                      className={cn(
+                        "h-6 rounded px-2 text-[10.5px] font-semibold tracking-wide",
+                        active ? "bg-navy text-white" : "bg-slate-50 text-slate-600 hover:bg-slate-100"
+                      )}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
               </div>
-            );
-          })}
-          {selectedConsultantId ? (
-            <button
-              type="button"
-              onClick={() => selectConsultant(null)}
-              className="text-[11px] text-slate-500 hover:text-slate-800"
-            >
-              Clear focus
-            </button>
-          ) : null}
-        </div>
+              {variant === "full" || variant === "split" ? (
+                <input
+                  className="field-input h-9 w-full max-w-none text-base md:h-6 md:max-w-[180px] md:text-[12px]"
+                  placeholder="Search location or job no."
+                  value={search}
+                  onChange={(event) => {
+                    const value = event.target.value;
+                    setSearch(value);
+                    const hits = searchMapMarkers(model.markers, value);
+                    if (hits.length === 1) selectJob(hits[0].id);
+                  }}
+                  aria-label="Search jobs on map"
+                />
+              ) : null}
+            </div>
+            <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
+              {consultants.map((consultant) => {
+                const hidden = mapHiddenConsultantIds.includes(consultant.id);
+                const focused = selectedConsultantId === consultant.id;
+                return (
+                  <div
+                    key={consultant.id}
+                    className={cn(
+                      "flex items-center gap-1 rounded px-1 py-0.5 text-[11.5px]",
+                      focused ? "bg-navy/[0.08] font-semibold text-slate-900" : "text-slate-600"
+                    )}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={!hidden}
+                      data-consultant-filter={consultant.id}
+                      onChange={() => toggleMapConsultantHidden(consultant.id)}
+                      className="size-3"
+                    />
+                    <button
+                      type="button"
+                      data-consultant-name={consultant.id}
+                      onClick={() => {
+                        if (hidden) toggleMapConsultantHidden(consultant.id);
+                        selectConsultant(consultant.id);
+                      }}
+                      className="flex items-center gap-1"
+                    >
+                      <span
+                        className="flex size-[18px] items-center justify-center rounded-full text-[8px] font-bold text-white"
+                        style={{ backgroundColor: consultant.displayColour }}
+                      >
+                        {consultant.initials}
+                      </span>
+                      {consultantFirstName(consultant.name)}
+                    </button>
+                  </div>
+                );
+              })}
+              {selectedConsultantId ? (
+                <button
+                  type="button"
+                  onClick={() => selectConsultant(null)}
+                  className="text-[11px] text-slate-500 hover:text-slate-800"
+                >
+                  Clear focus
+                </button>
+              ) : null}
+            </div>
+          </>
+        ) : null}
       </div>
 
       <div className={cn("relative min-h-0", variant === "full" ? "flex-1" : "min-h-[320px] flex-1")}>

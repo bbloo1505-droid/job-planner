@@ -11,6 +11,7 @@ import {
 } from "@/lib/geocoding/plan-my-day";
 import { normalizeGeocodeQuery } from "@/lib/geocoding/provider";
 import { parseAddressLines } from "@/lib/parse-addresses";
+import { clampAccessBuffer } from "@/lib/routing/access-buffer";
 import {
   clampSamplingMinutes,
   DEFAULT_SAMPLING_MINUTES,
@@ -327,6 +328,12 @@ export const useDayRouteStore = create<DayRouteState>((set, get) => ({
 
   updateSettings: (partial) => {
     const next = { ...partial };
+    if (next.travelBufferMinutes !== undefined) {
+      next.travelBufferMinutes = clampAccessBuffer(next.travelBufferMinutes);
+    }
+    if (next.roundToMinutes !== undefined && next.roundToMinutes !== 15 && next.roundToMinutes !== 30) {
+      next.roundToMinutes = 15;
+    }
     if (partial.startLocation !== undefined) {
       const geo = geocodeExactAddress(partial.startLocation);
       next.startLat = geo?.lat;
@@ -338,17 +345,29 @@ export const useDayRouteStore = create<DayRouteState>((set, get) => ({
       next.finishLng = geo?.lng;
     }
     const locationChanged =
-      next.startLat !== undefined ||
-      next.startLng !== undefined ||
-      next.finishLat !== undefined ||
-      next.finishLng !== undefined;
-    set((state) => ({
-      plan: {
+      partial.startLocation !== undefined ||
+      partial.finishLocation !== undefined ||
+      partial.startLat !== undefined ||
+      partial.startLng !== undefined ||
+      partial.finishLat !== undefined ||
+      partial.finishLng !== undefined;
+    set((state) => {
+      const plan = {
         ...state.plan,
         settings: { ...state.plan.settings, ...next },
-      },
-      needsRecalculate: state.hasOptimised,
-    }));
+      };
+      if (!state.hasOptimised) {
+        return { plan };
+      }
+      if (locationChanged) {
+        return { plan };
+      }
+      const result = applyResult({ ...state, plan }, true);
+      return {
+        plan: withTimedPlan(plan, result),
+        needsRecalculate: false,
+      };
+    });
     if (locationChanged && get().hasOptimised) scheduleRoadRouteRefresh();
   },
 

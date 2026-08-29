@@ -84,6 +84,7 @@ async function main() {
   await page.keyboard.press("Control+z");
   await page.locator(`[data-cell="c-taylor:2026-08-13"] [data-job-id="${createdId}"]`).waitFor();
 
+  await page.getByTestId("planner-side-toggle").click();
   const unassigned = page.locator('[data-testid="unassigned-panel"] [data-job-id]').nth(1);
   await unassigned.waitFor();
   const unassignedId = await unassigned.getAttribute("data-job-id");
@@ -102,6 +103,7 @@ async function main() {
   }, unassignedId);
   const searchToken = jobNo.match(/PR-TEST-\d+/)?.[0];
   if (searchToken) {
+    await page.getByTestId("planner-filters-toggle").click();
     await page.getByTestId("planner-search").fill(searchToken);
     await page.waitForTimeout(200);
     const cell = page.locator(`[data-cell="c-taylor:2026-08-25"] [data-job-id="${unassignedId}"]`);

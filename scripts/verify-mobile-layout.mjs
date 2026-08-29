@@ -75,8 +75,11 @@ async function main() {
   const board = await phone.locator(".prensa-planner-scroll").boundingBox();
   const teamAside = await phone.locator("[data-testid='team-planner-app'] aside").boundingBox();
   stacked(board, teamAside);
-  if (!(board.height > 180)) {
+  if (!(board.height > 360)) {
     throw new Error(`Team board is too short on phone (${board.height}px)`);
+  }
+  if (teamAside && teamAside.height > 80) {
+    throw new Error(`Unassigned dock should stay collapsed on phone (${teamAside.height}px)`);
   }
   const boardScroll = await phone.locator(".prensa-planner-scroll").evaluate((el) => ({
     client: el.clientWidth,
@@ -92,6 +95,12 @@ async function main() {
   const map = await phone.getByTestId("geo-map").boundingBox();
   const mapAside = await phone.locator("[data-testid='planner-map-app'] aside").boundingBox();
   stacked(map, mapAside);
+  if (!(map.height > 360)) {
+    throw new Error(`Allocation map is too short on phone (${map?.height}px)`);
+  }
+  if (mapAside && mapAside.height > 80) {
+    throw new Error(`Map jobs dock should stay collapsed on phone (${mapAside.height}px)`);
+  }
 
   await openDrawer(phone);
   await phone.getByTestId("mobile-drawer").locator("[data-nav='/reports']").click();

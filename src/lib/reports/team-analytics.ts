@@ -3,6 +3,7 @@ import { isFieldJob } from "@/lib/geo/insertion-cost";
 import { AVG_SEQ_URBAN_KMH } from "@/lib/routing/travel";
 import { dueStateLabel } from "@/lib/team/due-label";
 import { monthWorkingIsoDates } from "@/lib/team/month";
+import { WORK_CATEGORY_META } from "@/lib/team/work-category";
 import { isoDate, weekDays } from "@/lib/team/week";
 import type { Allocation, Job, Priority } from "@/lib/types";
 
@@ -44,9 +45,9 @@ const PRIORITY_COLOUR: Record<Priority, string> = {
 };
 const DUE_WEEKDAY = /^Due (Mon|Tue|Wed|Thu|Fri|Sat|Sun)$/;
 const STATUS_COLOUR = {
-  scheduled: "#1b7ab8",
-  unassigned: "#2aa89a",
-  completed: "#94a3b8",
+  scheduled: WORK_CATEGORY_META.confirmed_work.fill,
+  unassigned: WORK_CATEGORY_META.proposed_work.fill,
+  completed: WORK_CATEGORY_META.reporting.fill,
 };
 
 export function buildTeamReport(input: {

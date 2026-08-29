@@ -1,5 +1,9 @@
 import { haversineDistanceKm, resolvedPointOf } from "@/lib/geo";
 import {
+  accessMinutesForKnownTravel,
+  clampAccessBuffer,
+} from "@/lib/routing/access-buffer";
+import {
   addMinutes,
   minutesToTime,
   roundUpToInterval,
@@ -210,7 +214,9 @@ export function assignTimes(
   let currentTime = timeToMinutes(settings.startTime);
   let previous = startPoint(settings);
   let totalTravelMinutes = 0;
+  let totalAccessMinutes = 0;
   let exceedsWorkingDay = false;
+  const accessBuffer = clampAccessBuffer(settings.travelBufferMinutes);
   const workingEnd = settings.workingHoursEnd
     ? timeToMinutes(settings.workingHoursEnd)
     : null;
@@ -221,12 +227,17 @@ export function assignTimes(
     const travel =
       override !== undefined
         ? override.minutes
-        : travelBetween(previous, dest, settings.travelBufferMinutes);
+        : travelBetween(previous, dest, 0);
+    const access = accessMinutesForKnownTravel(travel, accessBuffer);
     const meters = override?.meters ?? metersBetween(previous, dest);
-    const arrival = currentTime + (travel ?? 0);
-    const result = applyConstraint(arrival, job, settings);
+    const earliestArrival = currentTime + (travel ?? 0) + access;
+    const result = applyConstraint(earliestArrival, job, settings);
     const duration = visitMinutes(job, settings);
     const departure = result.appointment + duration;
+    const waitingMinutes =
+      job.constraint.type === "fixed" && result.appointment > earliestArrival
+        ? result.appointment - earliestArrival
+        : 0;
 
     if (workingEnd !== null && result.appointment > workingEnd) {
       const conflict: StopConflict = {
@@ -247,13 +258,17 @@ export function assignTimes(
       order: index,
       suggestedArrival: minutesToTime(result.appointment),
       suggestedDeparture: minutesToTime(departure),
+      earliestArrival: minutesToTime(earliestArrival),
       travelMinutesFromPrevious: travel ?? undefined,
       travelMetersFromPrevious: meters,
+      accessBufferMinutes: travel != null ? access : undefined,
+      waitingMinutes: waitingMinutes > 0 ? waitingMinutes : undefined,
       isManuallyOrdered: existing?.isManuallyOrdered ?? false,
       conflict: result.conflict,
     });
 
     if (travel != null) totalTravelMinutes += travel;
+    totalAccessMinutes += access;
     currentTime = departure;
     previous = dest;
   });
@@ -265,16 +280,22 @@ export function assignTimes(
       ? 0
       : returnOverride !== undefined
         ? returnOverride.minutes
-        : travelBetween(previous, finish, settings.travelBufferMinutes);
+        : travelBetween(previous, finish, 0);
+  const returnAccess =
+    jobsInOrder.length === 0
+      ? 0
+      : accessMinutesForKnownTravel(returnTravel, accessBuffer);
   const returnTravelMinutes = returnTravel ?? 0;
   const returnTravelMeters =
     returnOverride?.meters ?? metersBetween(previous, finish);
   if (returnTravel != null) totalTravelMinutes += returnTravel;
+  totalAccessMinutes += returnAccess;
 
   return {
     stops,
     conflicts,
     totalTravelMinutes,
+    totalAccessMinutes,
     returnTravelMinutes,
     returnTravelMeters,
     exceedsWorkingDay,

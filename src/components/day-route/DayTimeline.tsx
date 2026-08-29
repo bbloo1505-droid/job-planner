@@ -9,11 +9,14 @@ import { Flag, Plus } from "lucide-react";
 import { TimelineStop } from "@/components/day-route/TimelineStop";
 import { TIMELINE_GRID } from "@/components/day-route/timeline-grid";
 import { TravelSegment } from "@/components/day-route/TravelSegment";
-import { formatDuration, minutesBeforeWorkingDayEnd, returnLegMinutes } from "@/lib/route-summary";
 import {
-  addMinutes,
-  formatDisplayTime,
-} from "@/lib/routing/round-time";
+  formatDuration,
+  minutesBeforeWorkingDayEnd,
+  plannedReturnTime,
+  returnAccessMinutes,
+  returnLegMinutes,
+} from "@/lib/route-summary";
+import { formatDisplayTime } from "@/lib/routing/round-time";
 import { useDayRouteStore } from "@/lib/store/day-route-store";
 import type { Job } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -37,10 +40,17 @@ export function DayTimeline() {
     plan.returnTravelMinutes
   );
   const returnMeters = plan.returnTravelMeters;
-  const returnTime =
-    lastStop?.suggestedDeparture && returnMinutes != null
-      ? addMinutes(lastStop.suggestedDeparture, returnMinutes)
-      : null;
+  const returnAccess = returnAccessMinutes(
+    settings,
+    lastJob,
+    plan.returnTravelMinutes
+  );
+  const returnTime = plannedReturnTime(
+    settings,
+    stops,
+    jobs,
+    plan.returnTravelMinutes
+  );
 
   const dayEnd = settings.workingHoursEnd;
   const spareMinutes = minutesBeforeWorkingDayEnd(
@@ -91,6 +101,7 @@ export function DayTimeline() {
                 <TravelSegment
                   minutes={stop.travelMinutesFromPrevious}
                   meters={stop.travelMetersFromPrevious}
+                  accessMinutes={stop.accessBufferMinutes}
                 />
                 <TimelineStop
                   stop={stop}
@@ -105,7 +116,11 @@ export function DayTimeline() {
 
         {lastJob ? (
           <>
-            <TravelSegment minutes={returnMinutes} meters={returnMeters} />
+            <TravelSegment
+              minutes={returnMinutes}
+              meters={returnMeters}
+              accessMinutes={returnAccess}
+            />
             <div className={cn(TIMELINE_GRID, "items-center py-1")}>
               <span className="text-right text-[13px] font-medium whitespace-nowrap text-slate-500 tabular-nums">
                 {returnTime ? formatDisplayTime(returnTime) : ""}

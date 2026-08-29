@@ -29,6 +29,7 @@ async function main() {
   await page
     .locator('[data-testid="maplibre-canvas"][data-map-engine="openfreemap"][data-map-ready="true"]')
     .waitFor({ timeout: 25000 });
+  await page.getByTestId("map-filters-toggle").click();
   await page.locator('[data-geo-day="2026-09-03"]').click();
   await page.locator('[data-testid="fit-jobs"]').click();
   await page.locator(".prensa-map-marker[data-initials], .prensa-map-cluster").first().waitFor({

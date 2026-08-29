@@ -13,6 +13,7 @@ export function assertFiniteNumber(value: number, label: string): void {
 
 export function assertHealthyResult(result: OptimiseResult): void {
   assertFiniteNumber(result.totalTravelMinutes, "totalTravelMinutes");
+  assertFiniteNumber(result.totalAccessMinutes, "totalAccessMinutes");
   assertFiniteNumber(result.returnTravelMinutes, "returnTravelMinutes");
   for (const stop of result.stops) {
     assertHealthyStop(stop);

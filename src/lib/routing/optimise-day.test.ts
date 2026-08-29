@@ -167,7 +167,12 @@ describe("optimiseDay invariants", () => {
     }));
     const result = optimiseDay({
       jobs: two,
-      settings: { ...settings, roundToMinutes: 15, startTime: "07:30" },
+      settings: {
+        ...settings,
+        roundToMinutes: 15,
+        startTime: "07:30",
+        travelBufferMinutes: 0,
+      },
       preserveOrder: true,
       travelLegs: [
         { minutes: 27, meters: 16400 },
@@ -181,5 +186,96 @@ describe("optimiseDay invariants", () => {
     assert.equal(result.stops[1].travelMinutesFromPrevious, 18);
     assert.equal(result.stops[1].suggestedArrival, "09:00");
     assert.equal(result.returnTravelMinutes, 22);
+  });
+
+  it("adds access buffer then rounds appointment times up", () => {
+    const { jobs, settings } = jobsOf("simple-corridor");
+    const two = jobs.slice(0, 2).map((job) => ({
+      ...job,
+      samplingDurationMinutes: 20,
+      estimatedMinutes: 20,
+      constraint: { type: "flexible" as const },
+    }));
+    const result = optimiseDay({
+      jobs: two,
+      settings: {
+        ...settings,
+        startTime: "07:30",
+        roundToMinutes: 15,
+        travelBufferMinutes: 5,
+        visitDurationMinutes: 20,
+      },
+      preserveOrder: true,
+      travelLegs: [
+        { minutes: 17, meters: 9000 },
+        { minutes: 17, meters: 9000 },
+        { minutes: 17, meters: 9000 },
+      ],
+    });
+    assertHealthyResult(result);
+    assert.equal(result.stops[0].travelMinutesFromPrevious, 17);
+    assert.equal(result.stops[0].accessBufferMinutes, 5);
+    assert.equal(result.stops[0].earliestArrival, "07:52");
+    assert.equal(result.stops[0].suggestedArrival, "08:00");
+    assert.equal(result.stops[0].suggestedDeparture, "08:20");
+    assert.equal(result.stops[1].travelMinutesFromPrevious, 17);
+    assert.equal(result.stops[1].accessBufferMinutes, 5);
+    assert.equal(result.stops[1].earliestArrival, "08:42");
+    assert.equal(result.stops[1].suggestedArrival, "08:45");
+    assert.equal(result.totalAccessMinutes, 15);
+  });
+
+  it("never rounds a suggested booking down", () => {
+    const { jobs, settings } = jobsOf("simple-corridor");
+    const one = [{
+      ...jobs[0],
+      samplingDurationMinutes: 20,
+      estimatedMinutes: 20,
+      constraint: { type: "flexible" as const },
+    }];
+    const result = optimiseDay({
+      jobs: one,
+      settings: {
+        ...settings,
+        startTime: "08:00",
+        roundToMinutes: 15,
+        travelBufferMinutes: 5,
+      },
+      preserveOrder: true,
+      travelLegs: [
+        { minutes: 40, meters: 20000 },
+        { minutes: 10, meters: 4000 },
+      ],
+    });
+    assert.equal(result.stops[0].earliestArrival, "08:45");
+    assert.equal(result.stops[0].suggestedArrival, "08:45");
+  });
+
+  it("keeps a fixed booking and reports waiting instead of compressing", () => {
+    const { jobs, settings } = jobsOf("simple-corridor");
+    const anchored: Job = {
+      ...jobs[0],
+      samplingDurationMinutes: 20,
+      estimatedMinutes: 20,
+      constraint: { type: "fixed", time: "10:00" },
+    };
+    const result = optimiseDay({
+      jobs: [anchored],
+      settings: {
+        ...settings,
+        startTime: "09:00",
+        roundToMinutes: 15,
+        travelBufferMinutes: 5,
+      },
+      preserveOrder: true,
+      travelLegs: [
+        { minutes: 30, meters: 15000 },
+        { minutes: 12, meters: 5000 },
+      ],
+    });
+    assert.equal(result.stops[0].earliestArrival, "09:35");
+    assert.equal(result.stops[0].suggestedArrival, "10:00");
+    assert.equal(result.stops[0].waitingMinutes, 25);
+    assert.equal(result.stops[0].suggestedDeparture, "10:20");
   });
 });

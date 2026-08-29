@@ -65,14 +65,16 @@ describe("rankAllocationCandidates", () => {
     assert.equal(ranked[0].date, "2026-09-03");
     assert.equal(ranked[0].feasible, true);
     assert.match(ranked[0].existingWork, /Maroochydore|Buderim/);
-    assert.ok(ranked[0].additionalTravelMinutes >= 0);
+    assert.ok(ranked[0].candidateScore >= 0);
+    assert.ok(ranked[0].distanceKm < 30);
     assert.match(ranked[0].insertionLabel, /Maroochydore|Buderim|before|after|between/);
 
     const alexThu = ranked.find(
       (item) => item.consultantId === "c-alex" && item.date === "2026-09-03"
     );
     assert.ok(alexThu);
-    assert.ok(alexThu.additionalTravelMinutes >= ranked[0].additionalTravelMinutes);
+    assert.ok(alexThu.distanceKm > ranked[0].distanceKm);
+    assert.ok(alexThu.candidateScore > ranked[0].candidateScore);
 
     const origin = pointOf(nambour.latitude, nambour.longitude);
     const maroochydore = pointOf(
@@ -81,6 +83,29 @@ describe("rankAllocationCandidates", () => {
     );
     assert.ok(origin && maroochydore);
     assert.ok(haversineDistanceKm(origin, maroochydore) < 30);
+  });
+
+  it("ranks Caboolture closer than the Sunshine Coast for Redcliffe", () => {
+    const demo = createTeamDemo();
+    const redcliffe = demo.jobs["tj-125"];
+    assert.equal(redcliffe.suburb, "Redcliffe");
+
+    const ranked = rankAllocationCandidates({
+      job: redcliffe,
+      consultants: demo.consultants,
+      jobs: demo.jobs,
+      allocations: demo.allocations,
+      workingDays: WEEK,
+    });
+    const alex = ranked.find((item) => item.consultantId === "c-alex" && item.date === "2026-09-03");
+    const taylor = ranked.find(
+      (item) => item.consultantId === "c-taylor" && item.date === "2026-09-03"
+    );
+    assert.ok(alex);
+    assert.ok(taylor);
+    assert.ok(alex.distanceKm < taylor.distanceKm);
+    assert.ok(alex.candidateScore < taylor.candidateScore);
+    assert.ok(ranked.findIndex((item) => item === alex) < ranked.findIndex((item) => item === taylor));
   });
 
   it("separates overlapping projected markers without changing identity", () => {

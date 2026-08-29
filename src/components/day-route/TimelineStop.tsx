@@ -77,6 +77,14 @@ export function TimelineStop({
         >
           {stop.suggestedArrival ? formatDisplayTime(stop.suggestedArrival) : "—"}
         </span>
+        {stop.waitingMinutes && stop.waitingMinutes > 0 && stop.earliestArrival ? (
+          <span className="mt-1 block text-[11px] leading-4 font-normal text-slate-400">
+            Arrive {formatDisplayTime(stop.earliestArrival)}
+            <span className="mt-0.5 block tabular-nums">
+              {stop.waitingMinutes} min waiting
+            </span>
+          </span>
+        ) : null}
       </div>
 
       <div className="relative flex justify-center">

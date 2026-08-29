@@ -126,6 +126,32 @@ describe("day route road routing", () => {
     assert.ok((state.plan.stops[0]?.travelMinutesFromPrevious ?? 0) > 0);
   });
 
+  it("access buffer and booking interval retime without a new road request", async () => {
+    let calls = 0;
+    setRouteFetcherForTests(async (coordinates) => {
+      calls += 1;
+      return mockRoadRoute(coordinates);
+    });
+    useDayRouteStore.getState().loadScenario("simple-corridor");
+    useDayRouteStore.getState().runOptimise();
+    await flushRoadRouteForTests();
+    assert.equal(calls, 1);
+    const travelBefore = useDayRouteStore.getState().plan.stops[0]?.travelMinutesFromPrevious;
+    assert.equal(travelBefore, 27);
+    useDayRouteStore.getState().updateSettings({ travelBufferMinutes: 0 });
+    assert.equal(calls, 1);
+    assert.equal(useDayRouteStore.getState().plan.stops[0]?.suggestedArrival, "08:00");
+    assert.equal(useDayRouteStore.getState().plan.stops[0]?.travelMinutesFromPrevious, 27);
+    useDayRouteStore.getState().updateSettings({ travelBufferMinutes: 15 });
+    assert.equal(calls, 1);
+    assert.equal(useDayRouteStore.getState().plan.stops[0]?.suggestedArrival, "08:15");
+    useDayRouteStore.getState().updateSettings({ roundToMinutes: 30 });
+    assert.equal(calls, 1);
+    assert.equal(useDayRouteStore.getState().plan.stops[0]?.suggestedArrival, "08:30");
+    assert.equal(useDayRouteStore.getState().needsRecalculate, false);
+    assert.equal(useDayRouteStore.getState().plan.stops[0]?.accessBufferMinutes, 15);
+  });
+
   it("H. identical order does not call the routing client again", async () => {
     let calls = 0;
     setRouteFetcherForTests(async (coordinates) => {

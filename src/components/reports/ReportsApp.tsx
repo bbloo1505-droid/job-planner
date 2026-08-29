@@ -107,8 +107,11 @@ export function ReportsApp() {
               <DonutChart slices={report.byPriority} />
             </article>
             <article className="rounded-2xl bg-white p-5 shadow-card">
-              <h2 className="mb-4 text-[14px] font-semibold text-slate-900">Jobs by Status</h2>
-              <DonutChart slices={report.byStatus} />
+              <h2 className="mb-1 text-[14px] font-semibold text-slate-900">Jobs by Status</h2>
+              <p className="mb-4 text-[11px] leading-4 text-slate-400">
+                Same colour language as the QLD Planning Board.
+              </p>
+              <DonutChart slices={report.byStatus} legend="key" />
             </article>
             <article className="rounded-2xl bg-white p-5 shadow-card">
               <h2 className="mb-4 text-[14px] font-semibold text-slate-900">Top Locations</h2>
@@ -160,7 +163,13 @@ function KpiCard({
   );
 }
 
-function DonutChart({ slices }: { slices: ReportSlice[] }) {
+function DonutChart({
+  slices,
+  legend = "dot",
+}: {
+  slices: ReportSlice[];
+  legend?: "dot" | "key";
+}) {
   const total = slices.reduce((sum, slice) => sum + slice.value, 0);
   const radius = 38;
   const circumference = 2 * Math.PI * radius;
@@ -201,11 +210,21 @@ function DonutChart({ slices }: { slices: ReportSlice[] }) {
       </svg>
       <ul className="flex min-w-0 flex-1 flex-col gap-2.5">
         {slices.map((slice) => (
-          <li key={slice.key} className="flex items-center justify-between gap-3 text-[13px]">
+          <li
+            key={slice.key}
+            className="flex items-center justify-between gap-3 text-[13px]"
+            data-report-slice={slice.key}
+            data-report-color={slice.color}
+          >
             <span className="flex min-w-0 items-center gap-2 text-slate-600">
               <span
-                className="size-2.5 shrink-0 rounded-full"
+                className={
+                  legend === "key"
+                    ? "inline-block h-4 min-w-4 shrink-0 rounded-[2px] px-1.5"
+                    : "size-2.5 shrink-0 rounded-full"
+                }
                 style={{ background: slice.color }}
+                aria-hidden
               />
               {slice.label}
             </span>

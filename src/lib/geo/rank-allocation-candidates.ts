@@ -4,14 +4,16 @@ import {
   describeInsertion,
   isFieldJob,
 } from "@/lib/geo/insertion-cost";
-import { haversineDistanceKm, pointOf } from "@/lib/geo";
+import { geocodeAddress, haversineDistanceKm, pointOf } from "@/lib/geo";
+import { AVG_SEQ_URBAN_KMH } from "@/lib/routing/travel";
 import type { Allocation, Consultant, Job } from "@/lib/types";
 
 /**
  * Allocation matching for unassigned jobs.
  *
- * Stage 1 score = additional prototype travel minutes from the best
- * insertion into that consultant's existing day (Haversine estimator).
+ * Stage 1 score = prototype minutes from the nearest existing job that
+ * day (or the home office if the day is empty) to this site.
+ * Further from the site ranks worse.
  *
  * Later, replace the travel estimator with approved road minutes
  * without rewriting MatchPanel / TeamMap.
@@ -42,7 +44,7 @@ export interface AllocationCandidate {
   newTravelMinutes: number;
   feasible: boolean;
   infeasibleReason?: string;
-  /** Nearest existing job, for context only — not the ranking score. */
+  /** Distance from nearest existing job (or office) to this site. */
   distanceKm: number;
   candidateScore: number;
 }
@@ -65,18 +67,29 @@ export function allocationWindowDays(job: Job, workingDays: string[]): string[] 
   return workingDays.filter((day) => day >= start && day <= end);
 }
 
-function nearestExistingKm(
+function travelMinutesFromKm(km: number): number {
+  if (!Number.isFinite(km)) return Number.POSITIVE_INFINITY;
+  if (km < 0.05) return 0;
+  return Math.max(1, Math.round((km / AVG_SEQ_URBAN_KMH) * 60));
+}
+
+function nearestExistingAnchor(
   job: Job,
-  consultantId: string,
+  consultant: Consultant,
   date: string,
   allocations: Allocation[],
   jobs: Record<string, Job>
-): number {
+): { km: number; minutes: number; jobId?: string; location: string } {
   const origin = pointOf(job.latitude, job.longitude);
-  if (!origin) return Number.POSITIVE_INFINITY;
-  let best = Number.POSITIVE_INFINITY;
+  if (!origin) {
+    return { km: Number.POSITIVE_INFINITY, minutes: Number.POSITIVE_INFINITY, location: "—" };
+  }
+
+  let bestKm = Number.POSITIVE_INFINITY;
+  let bestJobId: string | undefined;
+  let bestLocation = "—";
   for (const allocation of allocations) {
-    if (allocation.consultantId !== consultantId || allocation.scheduledDate !== date) {
+    if (allocation.consultantId !== consultant.id || allocation.scheduledDate !== date) {
       continue;
     }
     if (allocation.jobId === job.id) continue;
@@ -84,9 +97,28 @@ function nearestExistingKm(
     if (!existing || !isFieldJob(existing)) continue;
     const point = pointOf(existing.latitude, existing.longitude);
     if (!point) continue;
-    best = Math.min(best, haversineDistanceKm(origin, point));
+    const km = haversineDistanceKm(origin, point);
+    if (km < bestKm) {
+      bestKm = km;
+      bestJobId = existing.id;
+      bestLocation = existing.suburb ?? existing.address;
+    }
   }
-  return best;
+
+  if (bestJobId) {
+    return { km: bestKm, minutes: travelMinutesFromKm(bestKm), jobId: bestJobId, location: bestLocation };
+  }
+
+  const office = geocodeAddress(consultant.baseOffice ?? "Prensa Milton (demo)");
+  if (!office) {
+    return { km: Number.POSITIVE_INFINITY, minutes: Number.POSITIVE_INFINITY, location: "office" };
+  }
+  const km = haversineDistanceKm(origin, office);
+  return {
+    km,
+    minutes: travelMinutesFromKm(km),
+    location: office.suburb ?? "office",
+  };
 }
 
 export function rankAllocationCandidates(
@@ -110,8 +142,13 @@ export function rankAllocationCandidates(
         allocations: input.allocations,
         jobs: input.jobs,
       });
-      const anchorId = insertion.previousJobId ?? insertion.nextJobId;
-      const anchorJob = anchorId ? input.jobs[anchorId] : undefined;
+      const nearest = nearestExistingAnchor(
+        input.job,
+        consultant,
+        date,
+        input.allocations,
+        input.jobs
+      );
       candidates.push({
         consultantId: consultant.id,
         consultantName: nameById[consultant.id] ?? consultant.name,
@@ -119,12 +156,8 @@ export function rankAllocationCandidates(
         insertionIndex: insertion.insertionIndex,
         previousJobId: insertion.previousJobId,
         nextJobId: insertion.nextJobId,
-        existingJobId: anchorId,
-        existingLocation:
-          insertion.previousLocation ??
-          insertion.nextLocation ??
-          anchorJob?.suburb ??
-          "—",
+        existingJobId: nearest.jobId,
+        existingLocation: nearest.location,
         existingWork: describeExistingWork(insertion),
         insertionLabel: describeInsertion(insertion),
         additionalTravelMinutes: insertion.additionalTravelMinutes,
@@ -132,24 +165,16 @@ export function rankAllocationCandidates(
         newTravelMinutes: insertion.newTravelMinutes,
         feasible: insertion.feasible,
         infeasibleReason: insertion.infeasibleReason,
-        distanceKm: nearestExistingKm(
-          input.job,
-          consultant.id,
-          date,
-          input.allocations,
-          input.jobs
-        ),
-        candidateScore: insertion.feasible
-          ? insertion.additionalTravelMinutes
-          : Number.POSITIVE_INFINITY,
+        distanceKm: nearest.km,
+        candidateScore: insertion.feasible ? nearest.minutes : Number.POSITIVE_INFINITY,
       });
     }
   }
 
   return candidates.sort((a, b) => {
     if (a.feasible !== b.feasible) return a.feasible ? -1 : 1;
-    if (a.additionalTravelMinutes !== b.additionalTravelMinutes) {
-      return a.additionalTravelMinutes - b.additionalTravelMinutes;
+    if (a.candidateScore !== b.candidateScore) {
+      return a.candidateScore - b.candidateScore;
     }
     if (a.date !== b.date) return a.date.localeCompare(b.date);
     return a.consultantName.localeCompare(b.consultantName);
@@ -171,4 +196,5 @@ export {
   describeExistingWork,
   describeInsertion,
   formatAdditionalTravel,
+  formatTravelFromExisting,
 } from "@/lib/geo/insertion-cost";

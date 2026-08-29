@@ -12,6 +12,7 @@ import { format } from "date-fns";
 import { RotateCcw, SlidersHorizontal, Undo2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { DayTimeline } from "@/components/day-route/DayTimeline";
+import { DayTimingSettings } from "@/components/day-route/DayTimingSettings";
 import { NearbyJobsPanel } from "@/components/day-route/NearbyJobsPanel";
 import { RouteStatusBar } from "@/components/day-route/RouteStatusBar";
 import { SlotSuggestionsPanel } from "@/components/day-route/SlotSuggestionsPanel";
@@ -25,7 +26,9 @@ import {
   formatDuration,
   minutesBeforeWorkingDayEnd,
   plannedReturnTime,
+  totalAccessAllowanceMinutes,
   totalDrivingMinutes,
+  totalPlannedDayMinutes,
 } from "@/lib/route-summary";
 import { totalSamplingMinutes } from "@/lib/routing/sampling";
 import { formatDisplayTime } from "@/lib/routing/round-time";
@@ -100,6 +103,18 @@ export function OptimisedWorkspace() {
   const finishTime = plannedReturnTime(settings, stops, jobs, returnTravelMinutes);
   const driving = totalDrivingMinutes(settings, stops, jobs, returnTravelMinutes);
   const sampling = totalSamplingMinutes(stops, jobs, settings);
+  const access = totalAccessAllowanceMinutes(
+    settings,
+    stops,
+    jobs,
+    returnTravelMinutes
+  );
+  const plannedDay = totalPlannedDayMinutes(
+    settings,
+    stops,
+    jobs,
+    returnTravelMinutes
+  );
   const remaining = minutesBeforeWorkingDayEnd(
     settings,
     stops,
@@ -197,11 +212,16 @@ export function OptimisedWorkspace() {
             </Metric>
             <Dot />
             <Metric>
-              {formatDuration(driving)}{" "}
-              {roadRouteStatus === "live" ? "driving" : "estimated driving"}
+              Driving {formatDuration(driving)}
             </Metric>
             <Dot />
-            <Metric>{formatDuration(sampling)} sampling</Metric>
+            <Metric>Sampling {formatDuration(sampling)}</Metric>
+            <Dot />
+            <Metric>Access allowance {formatDuration(access)}</Metric>
+            <Dot />
+            <Metric className="font-medium text-slate-800">
+              Total planned day {formatDuration(plannedDay)}
+            </Metric>
             <Dot />
             <Metric>
               {bookingCount} suggested booking{" "}
@@ -245,14 +265,17 @@ export function OptimisedWorkspace() {
             ) : null}
             <Dot />
             {roadRouteStatus === "live" ? (
-              <span className="text-slate-400">Uncongested road times — no live traffic</span>
+              <span className="text-slate-400">Estimated road travel — no live traffic</span>
             ) : roadRouteStatus === "fallback" ? (
               <span className="text-amber-700">
                 {roadRouteMessage ?? "Live road routing unavailable — using estimated travel."}
               </span>
             ) : (
-              <span className="text-slate-400">Estimates only, not live road times</span>
+              <span className="text-slate-400">Estimated road travel</span>
             )}
+          </div>
+          <div className="mt-3 border-t border-slate-100 pt-3">
+            <DayTimingSettings compact />
           </div>
           {roadRouteStatus === "loading" ? (
             <p className="mt-2 text-[12px] text-slate-500">Calculating road route…</p>

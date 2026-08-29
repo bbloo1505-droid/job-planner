@@ -20,7 +20,7 @@ export const OPENFREEMAP_OSM_NOTICE = "Map data © OpenStreetMap";
 export const OPENFREEMAP_TRAVEL_NOTICE = "Travel estimates are not live road routing";
 export const SCHEMATIC_ROUTE_LINE_NOTICE = "Schematic route line — not live road routing";
 export const ROAD_ROUTE_ORS_NOTICE =
-  "Fastest road route via openrouteservice — uncongested times, no live traffic";
+  "Estimated road travel via openrouteservice — no live traffic";
 export const ESTIMATED_ROUTE_NOTICE = "Estimated route — live road routing unavailable";
 export const GOOGLE_MAP_NOTICE = "Google Maps prototype";
 export const GOOGLE_SYNTHETIC_NOTICE = "Synthetic job coordinates only";

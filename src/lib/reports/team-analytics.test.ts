@@ -173,5 +173,17 @@ describe("buildTeamReport", () => {
     assert.ok(all.totalJobs >= month.totalJobs);
     assert.ok(week.topLocations.some((item) => item.name === "Brisbane"));
     assert.equal(week.byStatus.find((slice) => slice.key === "scheduled")?.percent, 72);
+    assert.equal(
+      week.byStatus.find((slice) => slice.key === "scheduled")?.color,
+      "#7FF25C"
+    );
+    assert.equal(
+      week.byStatus.find((slice) => slice.key === "unassigned")?.color,
+      "#FCFE53"
+    );
+    assert.equal(
+      week.byStatus.find((slice) => slice.key === "completed")?.color,
+      "#75FBFE"
+    );
   });
 });
