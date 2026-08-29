@@ -22,6 +22,13 @@ import {
   optimiseDay,
   travelImpact,
 } from "@/lib/routing/optimise-day";
+import { fetchRouteFromBrowser } from "@/lib/routing/client";
+import {
+  routeCacheKey,
+  travelLegsFromRoute,
+  type RoadRoute,
+} from "@/lib/routing/provider";
+import { drivingWaypoints } from "@/lib/routing/waypoints";
 import { getSlotSuggestions } from "@/lib/routing/slot-suggestions";
 import {
   getValidationScenario,
@@ -43,6 +50,11 @@ const MAX_UNDO = 20;
 
 type SelectedKind = "stop" | "unbooked" | null;
 
+export type RoadRouteStatus = "idle" | "loading" | "live" | "fallback";
+
+const FALLBACK_ROUTE_MESSAGE =
+  "Live road routing unavailable — using estimated travel.";
+
 interface Snapshot {
   jobs: Record<string, Job>;
   pendingJobIds: string[];
@@ -54,6 +66,10 @@ interface Snapshot {
   manualOrderLock: boolean;
   activeScenarioId: string | null;
   unlocatedJobIds: string[];
+  roadRoute: RoadRoute | null;
+  roadRouteKey: string | null;
+  roadRouteStatus: RoadRouteStatus;
+  roadRouteMessage: string | null;
 }
 
 export interface DayRouteState extends Snapshot {
@@ -99,6 +115,8 @@ export interface DayRouteState extends Snapshot {
   backToPlanning: () => void;
   dismissImpact: () => void;
   loadScenario: (id: string) => boolean;
+  refreshRoadRoute: (options?: { force?: boolean }) => Promise<void>;
+  rerouteRoad: () => void;
 }
 
 function cloneSnapshot(state: Snapshot): Snapshot {
@@ -113,6 +131,12 @@ function cloneSnapshot(state: Snapshot): Snapshot {
     manualOrderLock: state.manualOrderLock,
     activeScenarioId: state.activeScenarioId,
     unlocatedJobIds: [...state.unlocatedJobIds],
+    roadRoute: state.roadRoute
+      ? structuredClone(state.roadRoute)
+      : null,
+    roadRouteKey: state.roadRouteKey,
+    roadRouteStatus: state.roadRouteStatus,
+    roadRouteMessage: state.roadRouteMessage,
   };
 }
 
@@ -186,7 +210,75 @@ function applyResult(
     settings: state.plan.settings,
     existingStops: state.plan.stops,
     preserveOrder,
+    travelLegs: travelLegsFor(state),
   });
+}
+
+function travelLegsFor(state: Snapshot) {
+  if (state.roadRouteStatus !== "live" || !state.roadRoute || !state.roadRouteKey) {
+    return undefined;
+  }
+  const coords = drivingWaypoints({
+    settings: state.plan.settings,
+    stops: state.plan.stops,
+    jobs: state.jobs,
+  });
+  if (!coords) return undefined;
+  if (routeCacheKey(coords) !== state.roadRouteKey) return undefined;
+  const legs = travelLegsFromRoute(state.roadRoute);
+  if (legs.length !== coords.length - 1) return undefined;
+  return legs;
+}
+
+function withTimedPlan(
+  plan: DayPlan,
+  result: ReturnType<typeof optimiseDay>
+): DayPlan {
+  return {
+    ...plan,
+    stops: result.stops,
+    returnTravelMinutes: result.returnTravelMinutes,
+    returnTravelMeters: result.returnTravelMeters,
+  };
+}
+
+const EMPTY_ROAD = {
+  roadRoute: null as RoadRoute | null,
+  roadRouteKey: null as string | null,
+  roadRouteStatus: "idle" as RoadRouteStatus,
+  roadRouteMessage: null as string | null,
+};
+
+let roadRouteDebounceMs = 400;
+let roadRouteTimer: ReturnType<typeof setTimeout> | null = null;
+let roadRouteGeneration = 0;
+
+export function setRoadRouteDebounceForTests(ms: number | null): void {
+  roadRouteDebounceMs = ms ?? 400;
+}
+
+export function cancelScheduledRoadRoute(): void {
+  if (roadRouteTimer) {
+    clearTimeout(roadRouteTimer);
+    roadRouteTimer = null;
+  }
+  roadRouteGeneration += 1;
+}
+
+function scheduleRoadRouteRefresh(): void {
+  if (roadRouteTimer) clearTimeout(roadRouteTimer);
+  roadRouteTimer = setTimeout(() => {
+    roadRouteTimer = null;
+    void useDayRouteStore.getState().refreshRoadRoute();
+  }, roadRouteDebounceMs);
+}
+
+export async function flushRoadRouteForTests(): Promise<void> {
+  if (roadRouteTimer) {
+    clearTimeout(roadRouteTimer);
+    roadRouteTimer = null;
+  }
+  await useDayRouteStore.getState().refreshRoadRoute();
 }
 
 const demo = createDemoPlan();
@@ -208,6 +300,7 @@ export const useDayRouteStore = create<DayRouteState>((set, get) => ({
   isPlanning: false,
   planProgress: null,
   unlocatedJobIds: [],
+  ...EMPTY_ROAD,
 
   initDayPlan: (date) => {
     const fresh = createDemoPlan();
@@ -228,6 +321,7 @@ export const useDayRouteStore = create<DayRouteState>((set, get) => ({
       isPlanning: false,
       planProgress: null,
       unlocatedJobIds: [],
+      ...EMPTY_ROAD,
     });
   },
 
@@ -243,6 +337,11 @@ export const useDayRouteStore = create<DayRouteState>((set, get) => ({
       next.finishLat = geo?.lat;
       next.finishLng = geo?.lng;
     }
+    const locationChanged =
+      next.startLat !== undefined ||
+      next.startLng !== undefined ||
+      next.finishLat !== undefined ||
+      next.finishLng !== undefined;
     set((state) => ({
       plan: {
         ...state.plan,
@@ -250,6 +349,7 @@ export const useDayRouteStore = create<DayRouteState>((set, get) => ({
       },
       needsRecalculate: state.hasOptimised,
     }));
+    if (locationChanged && get().hasOptimised) scheduleRoadRouteRefresh();
   },
 
   bulkAddAddresses: (text) => {
@@ -355,6 +455,7 @@ export const useDayRouteStore = create<DayRouteState>((set, get) => ({
         needsRecalculate: state.hasOptimised,
       };
     });
+    if (get().hasOptimised) scheduleRoadRouteRefresh();
   },
 
   confirmGeocodedAddress: (jobId, result) => {
@@ -398,12 +499,15 @@ export const useDayRouteStore = create<DayRouteState>((set, get) => ({
         pendingJobIds,
         unlocatedJobIds,
         undoStack: [...state.undoStack, snapshot].slice(-MAX_UNDO),
-        plan: { ...plan, stops: resultTimes.stops },
+        plan: withTimedPlan(plan, resultTimes),
         lastImpact: travelImpact(previousTravel, resultTimes),
         impactMessage: `${result.suburb ?? "Address"} resolved — appointment times updated.`,
         needsRecalculate: false,
+        roadRouteStatus: "loading",
+        roadRouteMessage: null,
       };
     });
+    if (get().hasOptimised) scheduleRoadRouteRefresh();
   },
 
   changeJobAddress: (jobId) => {
@@ -469,7 +573,7 @@ export const useDayRouteStore = create<DayRouteState>((set, get) => ({
       return {
         ...next,
         undoStack: [...state.undoStack, snapshot].slice(-MAX_UNDO),
-        plan: { ...next.plan, stops: result.stops },
+        plan: withTimedPlan(next.plan, result),
         lastImpact: travelImpact(previousTravel, result),
         impactMessage: `${suburb} duration changed from ${previous} to ${nextMinutes} min — appointment times updated.`,
         needsRecalculate: false,
@@ -523,7 +627,7 @@ export const useDayRouteStore = create<DayRouteState>((set, get) => ({
         undoStack: [...state.undoStack, snapshot].slice(-MAX_UNDO),
         jobs: state.jobs,
         pendingJobIds: nextState.pendingJobIds,
-        plan: { ...nextState.plan, stops: result.stops },
+        plan: withTimedPlan(nextState.plan, result),
         hasOptimised: true,
         manualOrderLock: true,
         needsRecalculate: false,
@@ -531,8 +635,11 @@ export const useDayRouteStore = create<DayRouteState>((set, get) => ({
         impactMessage: describeTravelImpact(impact),
         selectedJobId: jobId,
         selectedKind: "stop",
+        roadRouteStatus: "loading",
+        roadRouteMessage: null,
       };
     });
+    scheduleRoadRouteRefresh();
   },
 
   moveOutOfDay: (stopId) => {
@@ -560,14 +667,17 @@ export const useDayRouteStore = create<DayRouteState>((set, get) => ({
       const impact = travelImpact(previousTravel, result);
       return {
         undoStack: [...state.undoStack, snapshot].slice(-MAX_UNDO),
-        plan: { ...nextState.plan, stops: result.stops },
+        plan: withTimedPlan(nextState.plan, result),
         selectedJobId: null,
         selectedKind: null,
         lastImpact: impact,
         impactMessage: describeTravelImpact(impact),
         needsRecalculate: false,
+        roadRouteStatus: "loading",
+        roadRouteMessage: null,
       };
     });
+    if (get().hasOptimised) scheduleRoadRouteRefresh();
   },
 
   removeStop: (stopId) => {
@@ -619,8 +729,7 @@ export const useDayRouteStore = create<DayRouteState>((set, get) => ({
         pendingJobIds: [],
         unlocatedJobIds,
         plan: {
-          ...state.plan,
-          stops: result.stops,
+          ...withTimedPlan(state.plan, result),
           unbookedPool: Object.values(state.jobs).filter(
             (job) =>
               !routedIds.has(job.id) &&
@@ -635,8 +744,11 @@ export const useDayRouteStore = create<DayRouteState>((set, get) => ({
         impactMessage: null,
         selectedJobId: null,
         selectedKind: null,
+        roadRouteStatus: "loading",
+        roadRouteMessage: null,
       };
     });
+    if (get().hasOptimised) scheduleRoadRouteRefresh();
   },
 
   planMyDay: async () => {
@@ -702,8 +814,7 @@ export const useDayRouteStore = create<DayRouteState>((set, get) => ({
       pendingJobIds: [],
       unlocatedJobIds,
       plan: {
-        ...get().plan,
-        stops: planned.optimisation.stops,
+        ...withTimedPlan(get().plan, planned.optimisation),
         unbookedPool: Object.values(jobs).filter(
           (job) =>
             !routedIds.has(job.id) &&
@@ -720,7 +831,10 @@ export const useDayRouteStore = create<DayRouteState>((set, get) => ({
       impactMessage: null,
       selectedJobId: null,
       selectedKind: null,
+      roadRouteStatus: "loading",
+      roadRouteMessage: null,
     });
+    scheduleRoadRouteRefresh();
   },
 
   retryUnlocatedJob: async (jobId) => {
@@ -765,7 +879,7 @@ export const useDayRouteStore = create<DayRouteState>((set, get) => ({
       const impact = travelImpact(previousTravel, result);
       return {
         undoStack: [...state.undoStack, snapshot].slice(-MAX_UNDO),
-        plan: { ...state.plan, stops: result.stops },
+        plan: withTimedPlan(state.plan, result),
         needsRecalculate: false,
         lastConstraintJobId: null,
         lastImpact: impact,
@@ -773,8 +887,11 @@ export const useDayRouteStore = create<DayRouteState>((set, get) => ({
         manualOrderLock: state.manualOrderLock
           ? state.manualOrderLock
           : false,
+        roadRouteStatus: "loading",
+        roadRouteMessage: null,
       };
     });
+    if (get().hasOptimised) scheduleRoadRouteRefresh();
   },
 
   reorderStop: (fromIndex, toIndex) => {
@@ -802,15 +919,18 @@ export const useDayRouteStore = create<DayRouteState>((set, get) => ({
       return {
         undoStack: [...state.undoStack, snapshot].slice(-MAX_UNDO),
         plan: {
-          ...nextState.plan,
+          ...withTimedPlan(nextState.plan, result),
           stops: result.stops.map((stop) => ({ ...stop, isManuallyOrdered: true })),
         },
         manualOrderLock: true,
         needsRecalculate: false,
         lastImpact: impact,
         impactMessage: describeTravelImpact(impact),
+        roadRouteStatus: "loading",
+        roadRouteMessage: null,
       };
     });
+    scheduleRoadRouteRefresh();
   },
 
   updateJobConstraint: (jobId, constraint) => {
@@ -887,7 +1007,7 @@ export const useDayRouteStore = create<DayRouteState>((set, get) => ({
       return {
         undoStack: [...current.undoStack, snapshot].slice(-MAX_UNDO),
         jobs,
-        plan: { ...current.plan, stops: result.stops },
+        plan: withTimedPlan(current.plan, result),
         needsRecalculate: false,
       };
     });
@@ -933,7 +1053,7 @@ export const useDayRouteStore = create<DayRouteState>((set, get) => ({
         undoStack: [...state.undoStack, snapshot].slice(-MAX_UNDO),
         jobs: nextState.jobs,
         pendingJobIds: nextState.pendingJobIds,
-        plan: { ...nextState.plan, stops: result.stops },
+        plan: withTimedPlan(nextState.plan, result),
         hasOptimised: true,
         manualOrderLock: true,
         needsRecalculate: false,
@@ -941,8 +1061,11 @@ export const useDayRouteStore = create<DayRouteState>((set, get) => ({
         impactMessage: describeTravelImpact(impact),
         selectedJobId: jobId,
         selectedKind: "stop",
+        roadRouteStatus: "loading",
+        roadRouteMessage: null,
       };
     });
+    scheduleRoadRouteRefresh();
   },
 
   selectJob: (jobId, kind = null) => {
@@ -1009,11 +1132,96 @@ export const useDayRouteStore = create<DayRouteState>((set, get) => ({
         impactMessage: null,
         selectedJobId: null,
         selectedKind: null,
+        ...EMPTY_ROAD,
       };
     });
+    cancelScheduledRoadRoute();
   },
 
   dismissImpact: () => set({ impactMessage: null }),
+
+  refreshRoadRoute: async (options) => {
+    const token = ++roadRouteGeneration;
+    const state = get();
+    if (!state.hasOptimised || state.plan.stops.length === 0) {
+      set({ ...EMPTY_ROAD });
+      return;
+    }
+    const coords = drivingWaypoints({
+      settings: state.plan.settings,
+      stops: state.plan.stops,
+      jobs: state.jobs,
+    });
+    if (!coords) {
+      const estimated = applyResult(
+        { ...cloneSnapshot(state), ...EMPTY_ROAD, roadRouteStatus: "fallback" },
+        true
+      );
+      set({
+        ...EMPTY_ROAD,
+        roadRouteStatus: "fallback",
+        roadRouteMessage: FALLBACK_ROUTE_MESSAGE,
+        plan: withTimedPlan(state.plan, estimated),
+      });
+      return;
+    }
+    const key = routeCacheKey(coords);
+    if (
+      !options?.force &&
+      state.roadRouteStatus === "live" &&
+      state.roadRouteKey === key &&
+      state.roadRoute
+    ) {
+      return;
+    }
+    set({ roadRouteStatus: "loading", roadRouteMessage: null });
+    try {
+      const route = await fetchRouteFromBrowser(coords);
+      if (token !== roadRouteGeneration) return;
+      const latest = get();
+      const latestCoords = drivingWaypoints({
+        settings: latest.plan.settings,
+        stops: latest.plan.stops,
+        jobs: latest.jobs,
+      });
+      if (!latestCoords || routeCacheKey(latestCoords) !== key) return;
+      const withRoute: Snapshot = {
+        ...cloneSnapshot(latest),
+        roadRoute: route,
+        roadRouteKey: key,
+        roadRouteStatus: "live",
+        roadRouteMessage: null,
+      };
+      const timed = applyResult(withRoute, true);
+      set({
+        roadRoute: route,
+        roadRouteKey: key,
+        roadRouteStatus: "live",
+        roadRouteMessage: null,
+        plan: withTimedPlan(latest.plan, timed),
+      });
+    } catch {
+      if (token !== roadRouteGeneration) return;
+      const latest = get();
+      const fallbackState: Snapshot = {
+        ...cloneSnapshot(latest),
+        ...EMPTY_ROAD,
+        roadRouteStatus: "fallback",
+        roadRouteMessage: FALLBACK_ROUTE_MESSAGE,
+      };
+      const timed = applyResult(fallbackState, true);
+      set({
+        ...EMPTY_ROAD,
+        roadRouteStatus: "fallback",
+        roadRouteMessage: FALLBACK_ROUTE_MESSAGE,
+        plan: withTimedPlan(latest.plan, timed),
+      });
+    }
+  },
+
+  rerouteRoad: () => {
+    void get().refreshRoadRoute({ force: true });
+  },
 
   loadScenario: (id) => {
     const scenario = getValidationScenario(id);
@@ -1036,6 +1244,7 @@ export const useDayRouteStore = create<DayRouteState>((set, get) => ({
       isPlanning: false,
       planProgress: null,
       unlocatedJobIds: [],
+      ...EMPTY_ROAD,
     });
     return true;
   },
@@ -1046,6 +1255,7 @@ export function getJob(state: DayRouteState, jobId: string): Job | undefined {
 }
 
 export function resetDayRouteStore(): void {
+  cancelScheduledRoadRoute();
   const fresh = createDemoPlan();
   useDayRouteStore.setState({
     jobs: fresh.jobs,
@@ -1064,5 +1274,6 @@ export function resetDayRouteStore(): void {
     isPlanning: false,
     planProgress: null,
     unlocatedJobIds: [],
+    ...EMPTY_ROAD,
   });
 }

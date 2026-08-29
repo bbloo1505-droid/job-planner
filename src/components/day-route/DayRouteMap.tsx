@@ -6,10 +6,13 @@ import { MapViewportControls } from "@/components/map/providers/MapViewportContr
 import { buildDayRouteMapModel } from "@/lib/map/day-route-map-model";
 import type { DayRouteMapProvider } from "@/lib/map/day-route-map-provider";
 import {
+  ESTIMATED_ROUTE_NOTICE,
   OPENFREEMAP_MAP_NOTICE,
   OPENFREEMAP_OSM_NOTICE,
+  ROAD_ROUTE_ORS_NOTICE,
   SCHEMATIC_ROUTE_LINE_NOTICE,
 } from "@/lib/map/provider";
+import { geometryToPoints } from "@/lib/routing/provider";
 import { useDayRouteStore } from "@/lib/store/day-route-store";
 
 export function DayRouteMap() {
@@ -19,6 +22,13 @@ export function DayRouteMap() {
   const selectedJobId = useDayRouteStore((state) => state.selectedJobId);
   const selectedKind = useDayRouteStore((state) => state.selectedKind);
   const selectJob = useDayRouteStore((state) => state.selectJob);
+  const roadRoute = useDayRouteStore((state) => state.roadRoute);
+  const roadRouteStatus = useDayRouteStore((state) => state.roadRouteStatus);
+
+  const roadLine =
+    roadRouteStatus === "live" && roadRoute
+      ? geometryToPoints(roadRoute.geometry)
+      : null;
 
   const model = useMemo(
     () =>
@@ -28,8 +38,9 @@ export function DayRouteMap() {
         jobs,
         selectedJobId,
         selectedKind,
+        roadLine,
       }),
-    [jobs, selectedJobId, selectedKind, settings, stops]
+    [jobs, roadLine, selectedJobId, selectedKind, settings, stops]
   );
 
   const rootRef = useRef<HTMLDivElement>(null);
@@ -148,7 +159,11 @@ export function DayRouteMap() {
         <span className="text-slate-300"> · </span>
         {OPENFREEMAP_OSM_NOTICE}
         <span className="text-slate-300"> · </span>
-        {SCHEMATIC_ROUTE_LINE_NOTICE}
+        {roadRouteStatus === "live"
+          ? ROAD_ROUTE_ORS_NOTICE
+          : roadRouteStatus === "fallback"
+            ? ESTIMATED_ROUTE_NOTICE
+            : SCHEMATIC_ROUTE_LINE_NOTICE}
       </p>
     </section>
   );

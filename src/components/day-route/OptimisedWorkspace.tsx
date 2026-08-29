@@ -34,6 +34,7 @@ import { useDayRouteStore } from "@/lib/store/day-route-store";
 export function OptimisedWorkspace() {
   const settings = useDayRouteStore((state) => state.plan.settings);
   const stops = useDayRouteStore((state) => state.plan.stops);
+  const returnTravelMinutes = useDayRouteStore((state) => state.plan.returnTravelMinutes);
   const jobs = useDayRouteStore((state) => state.jobs);
   const selectedKind = useDayRouteStore((state) => state.selectedKind);
   const manualOrderLock = useDayRouteStore((state) => state.manualOrderLock);
@@ -45,6 +46,9 @@ export function OptimisedWorkspace() {
   const undoStack = useDayRouteStore((state) => state.undoStack);
   const unlocatedJobIds = useDayRouteStore((state) => state.unlocatedJobIds);
   const recalculate = useDayRouteStore((state) => state.recalculate);
+  const roadRouteStatus = useDayRouteStore((state) => state.roadRouteStatus);
+  const roadRouteMessage = useDayRouteStore((state) => state.roadRouteMessage);
+  const rerouteRoad = useDayRouteStore((state) => state.rerouteRoad);
 
   const [confirmReoptimise, setConfirmReoptimise] = useState(false);
 
@@ -93,10 +97,15 @@ export function OptimisedWorkspace() {
   }
 
   const date = safeDate(settings.date);
-  const finishTime = plannedReturnTime(settings, stops, jobs);
-  const driving = totalDrivingMinutes(settings, stops, jobs);
+  const finishTime = plannedReturnTime(settings, stops, jobs, returnTravelMinutes);
+  const driving = totalDrivingMinutes(settings, stops, jobs, returnTravelMinutes);
   const sampling = totalSamplingMinutes(stops, jobs, settings);
-  const remaining = minutesBeforeWorkingDayEnd(settings, stops, jobs);
+  const remaining = minutesBeforeWorkingDayEnd(
+    settings,
+    stops,
+    jobs,
+    returnTravelMinutes
+  );
 
   const routeJobs = stops
     .map((stop) => jobs[stop.jobId])
@@ -146,6 +155,15 @@ export function OptimisedWorkspace() {
               </Button>
               <Button
                 type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => rerouteRoad()}
+                disabled={roadRouteStatus === "loading"}
+              >
+                Re-route
+              </Button>
+              <Button
+                type="button"
                 variant={confirmReoptimise ? "default" : "outline"}
                 size="sm"
                 onClick={onReoptimise}
@@ -178,7 +196,10 @@ export function OptimisedWorkspace() {
               {finishTime ? ` – ${formatDisplayTime(finishTime)}` : ""}
             </Metric>
             <Dot />
-            <Metric>{formatDuration(driving)} estimated driving</Metric>
+            <Metric>
+              {formatDuration(driving)}{" "}
+              {roadRouteStatus === "live" ? "driving" : "estimated driving"}
+            </Metric>
             <Dot />
             <Metric>{formatDuration(sampling)} sampling</Metric>
             <Dot />
@@ -223,8 +244,19 @@ export function OptimisedWorkspace() {
               </>
             ) : null}
             <Dot />
-            <span className="text-slate-400">Estimates only, not live road times</span>
+            {roadRouteStatus === "live" ? (
+              <span className="text-slate-400">Road travel times</span>
+            ) : roadRouteStatus === "fallback" ? (
+              <span className="text-amber-700">
+                {roadRouteMessage ?? "Live road routing unavailable — using estimated travel."}
+              </span>
+            ) : (
+              <span className="text-slate-400">Estimates only, not live road times</span>
+            )}
           </div>
+          {roadRouteStatus === "loading" ? (
+            <p className="mt-2 text-[12px] text-slate-500">Calculating road route…</p>
+          ) : null}
         </header>
 
         <RouteStatusBar />

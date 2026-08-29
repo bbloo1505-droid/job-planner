@@ -105,6 +105,13 @@ describe("address auto-accept", () => {
     assert.equal(parsed.postcode, "4000");
   });
 
+  it("reads the suburb from a comma-less Queensland line", () => {
+    const parsed = parseAddressQuery("13 cork st deception bay");
+    assert.equal(parsed.houseNumber, "13");
+    assert.equal(parsed.street, "cork st");
+    assert.equal(parsed.suburb, "deception bay");
+  });
+
   it("auto-accepts the Brisbane match and rejects other William Streets", () => {
     const query = "1 William Street, Brisbane QLD";
     const brisbane: GeocodingResult = {

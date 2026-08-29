@@ -157,4 +157,29 @@ describe("optimiseDay invariants", () => {
     assert.equal(result.exceedsWorkingDay, true);
     assert.ok(result.conflicts.length > 0);
   });
+
+  it("D. uses road travel and sampling to suggest rounded appointment times", () => {
+    const { jobs, settings } = jobsOf("simple-corridor");
+    const two = jobs.slice(0, 2).map((job, index) => ({
+      ...job,
+      samplingDurationMinutes: index === 0 ? 30 : 20,
+      estimatedMinutes: index === 0 ? 30 : 20,
+    }));
+    const result = optimiseDay({
+      jobs: two,
+      settings: { ...settings, roundToMinutes: 15, startTime: "07:30" },
+      preserveOrder: true,
+      travelLegs: [
+        { minutes: 27, meters: 16400 },
+        { minutes: 18, meters: 9000 },
+        { minutes: 22, meters: 11000 },
+      ],
+    });
+    assert.equal(result.stops[0].travelMinutesFromPrevious, 27);
+    assert.equal(result.stops[0].suggestedArrival, "08:00");
+    assert.equal(result.stops[0].suggestedDeparture, "08:30");
+    assert.equal(result.stops[1].travelMinutesFromPrevious, 18);
+    assert.equal(result.stops[1].suggestedArrival, "09:00");
+    assert.equal(result.returnTravelMinutes, 22);
+  });
 });

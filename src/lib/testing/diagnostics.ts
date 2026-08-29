@@ -40,14 +40,25 @@ export function diagnoseDayRoute(
     jobCount: Object.keys(jobs).length,
     scheduledCount: plan.stops.length,
     unbookedCount: plan.unbookedPool.length,
-    totalTravelMinutes: totalDrivingMinutes(plan.settings, plan.stops, jobs),
+    totalTravelMinutes: totalDrivingMinutes(
+      plan.settings,
+      plan.stops,
+      jobs,
+      plan.returnTravelMinutes
+    ),
     plannedStart: plan.settings.startTime,
-    plannedFinish: plannedReturnTime(plan.settings, plan.stops, jobs),
+    plannedFinish: plannedReturnTime(
+      plan.settings,
+      plan.stops,
+      jobs,
+      plan.returnTravelMinutes
+    ),
     workingDayEnd: plan.settings.workingHoursEnd ?? null,
     minutesBeforeWorkingDayEnd: minutesBeforeWorkingDayEnd(
       plan.settings,
       plan.stops,
-      jobs
+      jobs,
+      plan.returnTravelMinutes
     ),
     constraintConflicts: plan.stops
       .filter((stop) => stop.conflict)

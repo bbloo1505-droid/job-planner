@@ -117,6 +117,7 @@ export interface RouteStop {
   suggestedArrival?: string;
   suggestedDeparture?: string;
   travelMinutesFromPrevious?: number;
+  travelMetersFromPrevious?: number;
   isManuallyOrdered?: boolean;
   conflict?: StopConflict;
 }
@@ -126,6 +127,8 @@ export interface DayPlan {
   settings: DayPlanSettings;
   stops: RouteStop[];
   unbookedPool: Job[];
+  returnTravelMinutes?: number;
+  returnTravelMeters?: number;
 }
 
 export interface GeoPoint {
@@ -161,6 +164,7 @@ export interface OptimiseResult {
   conflicts: StopConflict[];
   totalTravelMinutes: number;
   returnTravelMinutes: number;
+  returnTravelMeters?: number;
   exceedsWorkingDay: boolean;
 }
 

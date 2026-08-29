@@ -26,10 +26,17 @@ export function SamplingDurationField({
   const [customValue, setCustomValue] = useState(String(minutes));
 
   return (
-    <div className={compact ? "space-y-1" : "space-y-1.5"}>
-      <span className="field-label">Sampling duration</span>
-      <div className="flex flex-wrap items-center gap-1">
-        {SAMPLING_PRESETS.map((value) => (
+    <div className={compact ? "space-y-0" : "space-y-1.5"}>
+      {compact ? null : <span className="field-label">Sampling duration</span>}
+      <div
+        className={cn(
+          "flex flex-wrap items-center",
+          compact ? "gap-0" : "gap-1"
+        )}
+        role="group"
+        aria-label="Sampling duration in minutes"
+      >
+        {SAMPLING_PRESETS.map((value, index) => (
           <button
             key={value}
             type="button"
@@ -38,10 +45,22 @@ export function SamplingDurationField({
               onChange(value);
             }}
             className={cn(
-              "h-6 rounded-md border px-1.5 text-[11px] font-medium tabular-nums transition-colors",
-              minutes === value && !customOpen
-                ? "border-brand bg-brand/[0.08] text-brand-strong"
-                : "border-hairline bg-white text-slate-600 hover:border-slate-300 hover:text-slate-900"
+              "h-7 min-w-8 px-2 text-[11.5px] font-medium tabular-nums transition-colors",
+              compact
+                ? cn(
+                    "border border-hairline",
+                    index === 0 && "rounded-l-lg",
+                    minutes === value && !customOpen
+                      ? "z-[1] border-brand bg-brand text-white"
+                      : "bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-900",
+                    index > 0 && "-ml-px"
+                  )
+                : cn(
+                    "rounded-md border",
+                    minutes === value && !customOpen
+                      ? "border-brand bg-brand/[0.08] text-brand-strong"
+                      : "border-hairline bg-white text-slate-600 hover:border-slate-300 hover:text-slate-900"
+                  )
             )}
           >
             {value}
@@ -54,16 +73,26 @@ export function SamplingDurationField({
             setCustomValue(String(minutes));
           }}
           className={cn(
-            "h-6 rounded-md border px-1.5 text-[11px] font-medium transition-colors",
-            customOpen
-              ? "border-brand bg-brand/[0.08] text-brand-strong"
-              : "border-hairline bg-white text-slate-600 hover:border-slate-300 hover:text-slate-900"
+            "h-7 px-2 text-[11.5px] font-medium transition-colors",
+            compact
+              ? cn(
+                  "-ml-px rounded-r-lg border border-hairline",
+                  customOpen
+                    ? "z-[1] border-brand bg-brand text-white"
+                    : "bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                )
+              : cn(
+                  "rounded-md border",
+                  customOpen
+                    ? "border-brand bg-brand/[0.08] text-brand-strong"
+                    : "border-hairline bg-white text-slate-600 hover:border-slate-300 hover:text-slate-900"
+                )
           )}
         >
-          Custom
+          {compact ? "…" : "Custom"}
         </button>
         {customOpen ? (
-          <label className="flex items-center gap-1 text-[11px] text-slate-500">
+          <label className="ml-2 flex items-center gap-1 text-[11px] text-slate-500">
             <input
               type="number"
               min={MIN_SAMPLING_MINUTES}
@@ -79,7 +108,7 @@ export function SamplingDurationField({
                 setCustomValue(String(next));
                 onChange(next);
               }}
-              className="h-6 w-14 rounded-md border border-hairline px-1.5 text-[11px] text-slate-800 tabular-nums outline-none focus:border-brand focus:ring-3 focus:ring-brand/15"
+              className="h-7 w-14 rounded-lg border border-hairline px-1.5 text-[11.5px] text-slate-800 tabular-nums outline-none focus:border-brand focus:ring-3 focus:ring-brand/15"
             />
             min
           </label>

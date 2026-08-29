@@ -28,6 +28,8 @@ describe("OpenFreeMap basemap", () => {
     assert.equal(isDisallowedBasemapUrl("https://tile.openstreetmap.org/8/234/153.png"), true);
     assert.equal(isDisallowedBasemapUrl("https://nominatim.openstreetmap.org/search?q=Nambour"), true);
     assert.equal(isDisallowedBasemapUrl("https://router.project-osrm.org/route/v1/driving/0,0;1,1"), true);
+    assert.equal(isDisallowedBasemapUrl("https://api.heigit.org/openrouteservice/v2/directions/driving-car/geojson"), true);
+    assert.equal(isDisallowedBasemapUrl("https://api.openrouteservice.org/v2/directions/driving-car/geojson"), true);
     assert.equal(openFreeMapTransformUrl("https://tile.openstreetmap.org/8/234/153.png"), null);
     assert.equal(openFreeMapTransformUrl("https://nominatim.openstreetmap.org/search?q=Nambour"), null);
     assert.equal(openFreeMapTransformUrl("https://api.mapbox.com/geocoding/v5/mapbox.places/Nambour.json"), null);

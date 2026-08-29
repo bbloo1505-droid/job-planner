@@ -95,4 +95,28 @@ describe("day route map model", () => {
       false
     );
   });
+
+  it("B. draws returned road geometry instead of the schematic polyline", () => {
+    const jobs = {
+      a: job("a", "12 Example St, Indooroopilly"),
+      b: job("b", "84 Sample Rd, Oxley"),
+    };
+    const roadLine = [
+      { lat: -27.47, lng: 153.006 },
+      { lat: -27.49, lng: 153.0 },
+      { lat: -27.51, lng: 152.99 },
+      { lat: -27.56, lng: 152.978 },
+    ];
+    const model = buildDayRouteMapModel({
+      settings: DEFAULT_SETTINGS,
+      stops: [stop("a", 0), stop("b", 1)],
+      jobs,
+      selectedJobId: null,
+      selectedKind: null,
+      roadLine,
+    });
+    assert.equal(model.line.length, roadLine.length);
+    assert.deepEqual(model.line[1], roadLine[1]);
+    assert.equal(model.stops.length, 2);
+  });
 });

@@ -12,6 +12,8 @@ const DISALLOWED_HOST_SNIPPETS = [
   "nominatim.openstreetmap.org",
   "router.project-osrm.org",
   "routing.openstreetmap.de",
+  "api.heigit.org",
+  "api.openrouteservice.org",
 ];
 
 export function isOpenFreeMapAssetUrl(url: string): boolean {

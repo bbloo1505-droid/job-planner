@@ -56,6 +56,7 @@ export function buildDayRouteMapModel(input: {
   jobs: Record<string, Job>;
   selectedJobId: string | null;
   selectedKind: "stop" | "unbooked" | null;
+  roadLine?: GeoPoint[] | null;
 }): DayRouteMapModel {
   const { settings, stops, jobs, selectedJobId, selectedKind } = input;
   const start = resolvedPointOf(settings.startLat, settings.startLng);
@@ -139,9 +140,14 @@ export function buildDayRouteMapModel(input: {
     if (last && sameCoordinate(last, point)) return;
     line.push(point);
   };
-  if (start) pushUnique(start);
-  for (const stop of stopMarkers) pushUnique({ lat: stop.lat, lng: stop.lng });
-  if (finish) pushUnique(finish);
+  const roadLine = input.roadLine;
+  if (roadLine && roadLine.length >= 2) {
+    for (const point of roadLine) pushUnique(point);
+  } else {
+    if (start) pushUnique(start);
+    for (const stop of stopMarkers) pushUnique({ lat: stop.lat, lng: stop.lng });
+    if (finish) pushUnique(finish);
+  }
 
   const fitLocations: MapLocation[] = [];
   const seen = new Set<string>();

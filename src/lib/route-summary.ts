@@ -5,8 +5,10 @@ import type { DayPlanSettings, Job, RouteStop } from "@/lib/types";
 
 export function returnLegMinutes(
   settings: DayPlanSettings,
-  lastJob: Job | undefined
+  lastJob: Job | undefined,
+  storedMinutes?: number
 ): number | null {
+  if (storedMinutes != null && Number.isFinite(storedMinutes)) return storedMinutes;
   const from = lastJob
     ? resolvedPointOf(lastJob.latitude, lastJob.longitude, lastJob.suburb)
     : null;
@@ -17,7 +19,8 @@ export function returnLegMinutes(
 export function totalDrivingMinutes(
   settings: DayPlanSettings,
   stops: RouteStop[],
-  jobs: Record<string, Job>
+  jobs: Record<string, Job>,
+  storedReturnMinutes?: number
 ): number {
   const legs = stops.reduce(
     (sum, stop) => sum + (stop.travelMinutesFromPrevious ?? 0),
@@ -25,7 +28,7 @@ export function totalDrivingMinutes(
   );
   const lastStop = stops[stops.length - 1];
   const lastJob = lastStop ? jobs[lastStop.jobId] : undefined;
-  return legs + (returnLegMinutes(settings, lastJob) ?? 0);
+  return legs + (returnLegMinutes(settings, lastJob, storedReturnMinutes) ?? 0);
 }
 
 export function formatDuration(minutes: number): string {
@@ -33,20 +36,27 @@ export function formatDuration(minutes: number): string {
   const hours = Math.floor(safe / 60);
   const mins = safe % 60;
   if (hours === 0) return `${mins}m`;
-  if (mins === 0) return `${hours}h`;
+  if (hours > 0 && mins === 0) return `${hours}h`;
   return `${hours}h ${mins}m`;
+}
+
+export function formatDistanceMeters(meters: number | null | undefined): string | null {
+  if (meters == null || !Number.isFinite(meters) || meters < 50) return null;
+  const km = meters / 1000;
+  return `${km.toFixed(1)} km`;
 }
 
 /** Clock time the consultant is back at the finish location, or null if none. */
 export function plannedReturnTime(
   settings: DayPlanSettings,
   stops: RouteStop[],
-  jobs: Record<string, Job>
+  jobs: Record<string, Job>,
+  storedReturnMinutes?: number
 ): string | null {
   const lastStop = stops[stops.length - 1];
   const lastJob = lastStop ? jobs[lastStop.jobId] : undefined;
   if (!lastStop?.suggestedDeparture || !lastJob) return null;
-  const returnMinutes = returnLegMinutes(settings, lastJob);
+  const returnMinutes = returnLegMinutes(settings, lastJob, storedReturnMinutes);
   if (returnMinutes == null) return null;
   return addMinutes(lastStop.suggestedDeparture, returnMinutes);
 }
@@ -58,10 +68,11 @@ export function plannedReturnTime(
 export function minutesBeforeWorkingDayEnd(
   settings: DayPlanSettings,
   stops: RouteStop[],
-  jobs: Record<string, Job>
+  jobs: Record<string, Job>,
+  storedReturnMinutes?: number
 ): number | null {
   if (!settings.workingHoursEnd) return null;
-  const finish = plannedReturnTime(settings, stops, jobs);
+  const finish = plannedReturnTime(settings, stops, jobs, storedReturnMinutes);
   if (!finish) return null;
   return timeToMinutes(settings.workingHoursEnd) - timeToMinutes(finish);
 }

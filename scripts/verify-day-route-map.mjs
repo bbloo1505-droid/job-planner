@@ -18,6 +18,8 @@ const disallowed = [
   /nominatim\.openstreetmap\.org/i,
   /tile\.openstreetmap\.org/i,
   /router\.project-osrm\.org/i,
+  /api\.heigit\.org/i,
+  /openrouteservice/i,
 ];
 
 const blocked = [];
@@ -50,7 +52,11 @@ async function main() {
     .locator('[data-testid="day-route-map"][data-map-engine="openfreemap"][data-map-ready="true"]')
     .waitFor({ timeout: 25000 });
   await page.getByRole("button", { name: /fit route/i }).waitFor();
-  await page.getByText("Schematic route line — not live road routing").waitFor();
+  await page
+    .getByText(
+      /Road route via openrouteservice|Estimated route — live road routing unavailable|Schematic route line/
+    )
+    .waitFor();
 
   const stopCount = await page.locator(".prensa-day-route-stop").count();
   if (stopCount < 5) {

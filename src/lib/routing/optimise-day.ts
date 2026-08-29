@@ -1,4 +1,4 @@
-import { resolvedPointOf } from "@/lib/geo";
+import { haversineDistanceKm, resolvedPointOf } from "@/lib/geo";
 import {
   addMinutes,
   minutesToTime,
@@ -6,6 +6,7 @@ import {
   timeToMinutes,
 } from "@/lib/routing/round-time";
 import { samplingDurationOf } from "@/lib/routing/sampling";
+import type { TravelLegOverride } from "@/lib/routing/provider";
 import { estimateTravelMinutesOrNull } from "@/lib/routing/travel";
 import type {
   AppointmentConstraint,
@@ -192,10 +193,16 @@ export function orderJobs(
   return ordered;
 }
 
+function metersBetween(from: GeoPoint | null, to: GeoPoint | null): number | undefined {
+  if (!from || !to) return undefined;
+  return haversineDistanceKm(from, to) * 1000;
+}
+
 export function assignTimes(
   jobsInOrder: Job[],
   settings: DayPlanSettings,
-  existingStops: RouteStop[] = []
+  existingStops: RouteStop[] = [],
+  travelLegs?: TravelLegOverride[]
 ): OptimiseResult {
   const stopIdByJob = new Map(existingStops.map((stop) => [stop.jobId, stop]));
   const conflicts: StopConflict[] = [];
@@ -210,7 +217,12 @@ export function assignTimes(
 
   jobsInOrder.forEach((job, index) => {
     const dest = jobPoint(job);
-    const travel = travelBetween(previous, dest, settings.travelBufferMinutes);
+    const override = travelLegs?.[index];
+    const travel =
+      override !== undefined
+        ? override.minutes
+        : travelBetween(previous, dest, settings.travelBufferMinutes);
+    const meters = override?.meters ?? metersBetween(previous, dest);
     const arrival = currentTime + (travel ?? 0);
     const result = applyConstraint(arrival, job, settings);
     const duration = visitMinutes(job, settings);
@@ -236,6 +248,7 @@ export function assignTimes(
       suggestedArrival: minutesToTime(result.appointment),
       suggestedDeparture: minutesToTime(departure),
       travelMinutesFromPrevious: travel ?? undefined,
+      travelMetersFromPrevious: meters,
       isManuallyOrdered: existing?.isManuallyOrdered ?? false,
       conflict: result.conflict,
     });
@@ -246,11 +259,16 @@ export function assignTimes(
   });
 
   const finish = finishPoint(settings);
+  const returnOverride = travelLegs?.[jobsInOrder.length];
   const returnTravel =
-    jobsInOrder.length > 0
-      ? travelBetween(previous, finish, settings.travelBufferMinutes)
-      : 0;
+    jobsInOrder.length === 0
+      ? 0
+      : returnOverride !== undefined
+        ? returnOverride.minutes
+        : travelBetween(previous, finish, settings.travelBufferMinutes);
   const returnTravelMinutes = returnTravel ?? 0;
+  const returnTravelMeters =
+    returnOverride?.meters ?? metersBetween(previous, finish);
   if (returnTravel != null) totalTravelMinutes += returnTravel;
 
   return {
@@ -258,6 +276,7 @@ export function assignTimes(
     conflicts,
     totalTravelMinutes,
     returnTravelMinutes,
+    returnTravelMeters,
     exceedsWorkingDay,
   };
 }
@@ -267,12 +286,13 @@ export function optimiseDay(input: {
   settings: DayPlanSettings;
   existingStops?: RouteStop[];
   preserveOrder?: boolean;
+  travelLegs?: TravelLegOverride[];
 }): OptimiseResult {
-  const { jobs, settings, existingStops = [], preserveOrder = false } = input;
+  const { jobs, settings, existingStops = [], preserveOrder = false, travelLegs } = input;
   const ordered = preserveOrder
     ? jobs
     : orderJobs(jobs, settings);
-  const result = assignTimes(ordered, settings, existingStops);
+  const result = assignTimes(ordered, settings, existingStops, travelLegs);
   if (!preserveOrder) {
     result.stops = result.stops.map((stop) => ({
       ...stop,

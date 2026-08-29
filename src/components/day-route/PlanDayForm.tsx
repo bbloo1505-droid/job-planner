@@ -1,7 +1,7 @@
 "use client";
 
 import { format } from "date-fns";
-import { Plus } from "lucide-react";
+import { ArrowRight, ChevronDown, MapPin, Plus } from "lucide-react";
 import { useState } from "react";
 import { PropertyAddressRow } from "@/components/day-route/PropertyAddressRow";
 import { ResolutionProgress } from "@/components/day-route/ResolutionProgress";
@@ -29,31 +29,27 @@ export function PlanDayForm() {
 
   return (
     <div className="flex h-full flex-col bg-canvas">
-      <header className="shrink-0 border-b border-slate-200/70 bg-white px-7 pt-5 pb-4">
-        <p className="eyebrow">Day Route Planner</p>
-        <div className="mt-1 flex flex-wrap items-baseline gap-x-3 gap-y-1">
-          <h1 className="text-[22px] leading-none font-semibold tracking-tight text-slate-900">
-            {date ? `Plan ${format(date, "EEEE")}` : "Plan your day"}
-          </h1>
-          {date ? (
-            <span className="text-[13px] text-slate-500">
-              {format(date, "d MMMM yyyy")}
-            </span>
-          ) : null}
-        </div>
-        <p className="mt-1.5 text-[13px] text-slate-500">
-          Enter today&apos;s properties, set sampling duration, then plan the day.
-        </p>
-      </header>
-
-      <div className="min-h-0 flex-1 overflow-auto px-7 py-5">
-        <div className="mx-auto w-full max-w-[760px] space-y-5">
-          <section className="panel">
-            <div className="grid gap-3 px-4 py-3 sm:grid-cols-3">
-              <Field label="Day start">
+      <header className="shrink-0 border-b border-slate-200/70 bg-white">
+        <div className="mx-auto flex w-full max-w-[920px] flex-col gap-4 px-6 py-5 lg:px-8">
+          <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
+            <div className="min-w-0">
+              <p className="eyebrow">Day Route Planner</p>
+              <div className="mt-1 flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
+                <h1 className="text-[26px] leading-none font-semibold tracking-tight text-slate-900">
+                  {date ? `Plan ${format(date, "EEEE")}` : "Plan your day"}
+                </h1>
+                {date ? (
+                  <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[12px] font-medium text-slate-600">
+                    {format(date, "d MMM yyyy")}
+                  </span>
+                ) : null}
+              </div>
+            </div>
+            <div className="flex flex-wrap items-end gap-3">
+              <Field label="Start">
                 <input
                   type="time"
-                  className="field-input"
+                  className="field-input h-8 w-[7.5rem]"
                   aria-label="Day start"
                   value={settings.startTime}
                   onChange={(event) =>
@@ -61,10 +57,10 @@ export function PlanDayForm() {
                   }
                 />
               </Field>
-              <Field label="Day end">
+              <Field label="End">
                 <input
                   type="time"
-                  className="field-input"
+                  className="field-input h-8 w-[7.5rem]"
                   aria-label="Day end"
                   value={settings.workingHoursEnd ?? "16:00"}
                   onChange={(event) =>
@@ -75,48 +71,56 @@ export function PlanDayForm() {
               <Field label="Date">
                 <input
                   type="date"
-                  className="field-input"
+                  className="field-input h-8 w-[10.5rem]"
                   value={settings.date}
                   onChange={(event) => updateSettings({ date: event.target.value })}
                 />
               </Field>
-              <label className="space-y-1 sm:col-span-3">
-                <span className="field-label">Start / finish location</span>
-                <input
-                  className="field-input"
-                  aria-label="Start / finish location"
-                  placeholder="Milton office"
-                  value={office}
-                  onChange={(event) => {
-                    const value = event.target.value;
-                    updateSettings({
-                      startLocation: value,
-                      finishLocation: value,
-                    });
-                  }}
-                />
-              </label>
             </div>
-          </section>
+          </div>
+          <label className="block space-y-1">
+            <span className="field-label">Start / finish</span>
+            <span className="relative block">
+              <MapPin className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-slate-400" />
+              <input
+                className="field-input h-9 pl-8"
+                aria-label="Start / finish location"
+                placeholder="Milton office"
+                value={office}
+                onChange={(event) => {
+                  const value = event.target.value;
+                  updateSettings({
+                    startLocation: value,
+                    finishLocation: value,
+                  });
+                }}
+              />
+            </span>
+          </label>
+        </div>
+      </header>
 
+      <div className="min-h-0 flex-1 overflow-auto px-6 py-5 lg:px-8">
+        <div className="mx-auto w-full max-w-[920px]">
           <section className="panel">
-            <div className="panel-header flex items-end justify-between gap-3">
-              <h2 className="panel-heading">Properties</h2>
-              <div className="hidden grid-cols-[minmax(0,1fr)_132px] gap-3 pr-8 text-[10.5px] font-medium tracking-wide text-slate-400 uppercase sm:grid sm:w-[min(100%,520px)]">
-                <span>Address</span>
-                <span>Duration</span>
+            <div className="flex items-end justify-between gap-3 border-b border-slate-100 px-5 py-3.5">
+              <div>
+                <h2 className="panel-heading">Properties</h2>
+                <p className="mt-0.5 text-[12px] text-slate-500">
+                  Type an address, then set time on site.
+                </p>
               </div>
+              <p className="hidden text-[11px] font-medium tracking-wide text-slate-400 uppercase sm:block">
+                Duration · min
+              </p>
             </div>
-            <p className="border-b border-amber-100 bg-amber-50/70 px-4 py-2 text-[11.5px] leading-relaxed text-amber-900">
-              {GEOCODING_PRIVACY_NOTICE}
-            </p>
 
             {isPlanning && planProgress ? (
-              <div className="p-4">
+              <div className="p-5">
                 <ResolutionProgress progress={planProgress} />
               </div>
             ) : pendingJobs.length > 0 ? (
-              <ul className="space-y-2 p-3">
+              <ul className="divide-y divide-slate-100">
                 {pendingJobs.map((job, index) => (
                   <PropertyAddressRow
                     key={job.id}
@@ -127,78 +131,82 @@ export function PlanDayForm() {
                 ))}
               </ul>
             ) : (
-              <div className="px-4 py-8 text-center">
-                <p className="text-[13px] font-medium text-slate-700">
+              <div className="px-5 py-10 text-center">
+                <p className="text-[14px] font-semibold text-slate-800">
                   No properties yet
                 </p>
-                <p className="mt-1 text-[12.5px] text-slate-500">
+                <p className="mt-1 text-[13px] text-slate-500">
                   Add a property or paste a list, one address per line.
                 </p>
               </div>
             )}
 
             {!isPlanning ? (
-              <div className="border-t border-hairline px-2 py-1.5">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 bg-slate-50/70 px-3 py-2">
                 <button
                   type="button"
                   onClick={() => addPendingAddress()}
-                  className="flex h-8 items-center gap-1.5 rounded-md px-2 text-[12.5px] font-medium text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-800"
+                  className="flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-[12.5px] font-medium text-slate-600 transition-colors hover:bg-white hover:text-slate-900"
                 >
                   <Plus className="size-3.5" />
                   Add property
                 </button>
+                <details className="min-w-0 flex-1 sm:max-w-[420px]">
+                  <summary className="flex h-8 cursor-pointer list-none items-center justify-end gap-1 rounded-lg px-2.5 text-[12px] font-medium text-slate-500 hover:text-slate-800 [&::-webkit-details-marker]:hidden">
+                    Paste a list
+                    <ChevronDown className="size-3.5" />
+                  </summary>
+                  <div className="px-2 pb-2">
+                    <textarea
+                      rows={3}
+                      className="mt-1 w-full resize-y rounded-lg border border-hairline bg-white px-2.5 py-2 text-[12.5px] leading-relaxed text-slate-800 transition-colors outline-none hover:border-slate-300 focus:border-brand focus:ring-3 focus:ring-brand/15"
+                      placeholder="One address per line"
+                      value={pasteText}
+                      onChange={(event) => setPasteText(event.target.value)}
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="mt-2"
+                      disabled={!pasteText.trim()}
+                      onClick={() => {
+                        bulkAddAddresses(pasteText);
+                        setPasteText("");
+                      }}
+                    >
+                      Add to list
+                    </Button>
+                  </div>
+                </details>
               </div>
             ) : null}
           </section>
-
-          {!isPlanning ? (
-            <section className="panel">
-              <div className="panel-header">
-                <h2 className="panel-heading">Paste addresses</h2>
-              </div>
-              <div className="p-3">
-                <textarea
-                  rows={3}
-                  className="w-full resize-y rounded-lg border border-hairline bg-white px-2.5 py-2 text-[12.5px] leading-relaxed text-slate-800 transition-colors outline-none hover:border-slate-300 focus:border-brand focus:ring-3 focus:ring-brand/15"
-                  placeholder="One address per line"
-                  value={pasteText}
-                  onChange={(event) => setPasteText(event.target.value)}
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="mt-2"
-                  disabled={!pasteText.trim()}
-                  onClick={() => {
-                    bulkAddAddresses(pasteText);
-                    setPasteText("");
-                  }}
-                >
-                  Add to list
-                </Button>
-              </div>
-            </section>
-          ) : null}
+          <p className="mt-3 px-1 text-[11px] leading-relaxed text-slate-400">
+            {GEOCODING_PRIVACY_NOTICE}
+          </p>
         </div>
       </div>
 
-      <footer className="flex shrink-0 flex-col gap-3 border-t border-hairline bg-white px-7 py-4 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-[13px] text-slate-500">
-          <span className="font-semibold text-slate-900 tabular-nums">
-            {typedCount}
-          </span>{" "}
-          {typedCount === 1 ? "property" : "properties"} ready to plan
-        </p>
-        <Button
-          type="button"
-          size="lg"
-          disabled={typedCount === 0 || isPlanning}
-          onClick={() => void planMyDay()}
-          data-testid="plan-my-day"
-          className="h-11 w-full bg-brand px-8 text-[15px] font-semibold text-white hover:bg-brand-strong sm:w-auto"
-        >
-          {isPlanning ? "Planning…" : "Plan my day"}
-        </Button>
+      <footer className="shrink-0 border-t border-slate-200/80 bg-white/95 shadow-[0_-8px_24px_-18px_rgb(26_39_68_/_0.35)] backdrop-blur-sm">
+        <div className="mx-auto flex w-full max-w-[920px] flex-col gap-3 px-6 py-3.5 sm:flex-row sm:items-center sm:justify-between lg:px-8">
+          <p className="text-[13px] text-slate-500">
+            <span className="mr-1.5 inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-navy px-1.5 text-[12px] font-semibold text-white tabular-nums">
+              {typedCount}
+            </span>
+            {typedCount === 1 ? "property ready" : "properties ready"}
+          </p>
+          <Button
+            type="button"
+            size="lg"
+            disabled={typedCount === 0 || isPlanning}
+            onClick={() => void planMyDay()}
+            data-testid="plan-my-day"
+            className="h-11 w-full gap-2 rounded-xl bg-brand px-7 text-[15px] font-semibold text-white shadow-[0_8px_18px_-10px_rgb(27_122_184_/_0.9)] hover:bg-brand-strong sm:w-auto"
+          >
+            {isPlanning ? "Planning…" : "Plan my day"}
+            {isPlanning ? null : <ArrowRight className="size-4" />}
+          </Button>
+        </div>
       </footer>
     </div>
   );

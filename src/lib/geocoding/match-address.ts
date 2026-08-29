@@ -23,6 +23,44 @@ export interface ParsedAddressQuery {
   postcode?: string;
 }
 
+const STREET_TYPE_TOKENS = new Set([
+  "st",
+  "street",
+  "rd",
+  "road",
+  "ave",
+  "avenue",
+  "pde",
+  "parade",
+  "cct",
+  "circuit",
+  "cres",
+  "crescent",
+  "ct",
+  "court",
+  "crt",
+  "dr",
+  "drive",
+  "pl",
+  "place",
+  "tce",
+  "terrace",
+  "hwy",
+  "highway",
+  "cl",
+  "close",
+  "blvd",
+  "boulevard",
+  "bvd",
+  "ln",
+  "lane",
+  "way",
+  "loop",
+  "grove",
+  "esplanade",
+  "esp",
+]);
+
 export function parseAddressQuery(query: string): ParsedAddressQuery {
   const trimmed = query.trim();
   if (!trimmed) return {};
@@ -37,18 +75,65 @@ export function parseAddressQuery(query: string): ParsedAddressQuery {
     ? streetTokens[0].toLowerCase()
     : undefined;
   const streetWords = houseNumber ? streetTokens.slice(1) : streetTokens;
-  const street = streetWords.length
+  let street = streetWords.length
     ? normalizeAddressKey(streetWords.join(" "))
     : undefined;
 
   const localityTokens = tokenize(localityPart).filter(
     (token) => !STATE_TOKENS.has(token) && !/^\d{4}$/.test(token)
   );
-  const suburb = localityTokens.length
+  let suburb = localityTokens.length
     ? normalizeAddressKey(localityTokens.join(" "))
     : undefined;
 
+  if (!suburb) {
+    const fromLine = suburbAfterStreetType(tokenize(trimmed), houseNumber);
+    if (fromLine) {
+      suburb = fromLine.suburb;
+      if (fromLine.street) street = fromLine.street;
+    }
+  }
+
   return { houseNumber, street, suburb, postcode };
+}
+
+export function titleCasePlace(value: string): string {
+  return value
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+    .join(" ");
+}
+
+function suburbAfterStreetType(
+  tokens: string[],
+  houseNumber?: string
+): { street?: string; suburb: string } | null {
+  const start = houseNumber ? 1 : 0;
+  const typeIndexes: number[] = [];
+  for (let i = start; i < tokens.length; i += 1) {
+    if (STREET_TYPE_TOKENS.has(tokens[i])) typeIndexes.push(i);
+  }
+  if (typeIndexes.length === 0) return null;
+
+  let typeIndex = typeIndexes[typeIndexes.length - 1];
+  if (
+    tokens[typeIndex] === "st" &&
+    typeIndexes.length > 1 &&
+    tokens[typeIndexes[typeIndexes.length - 2] + 1] === "st"
+  ) {
+    typeIndex = typeIndexes[typeIndexes.length - 2];
+  }
+
+  const streetTokens = tokens.slice(start, typeIndex + 1);
+  const suburbTokens = tokens
+    .slice(typeIndex + 1)
+    .filter((token) => !STATE_TOKENS.has(token) && !/^\d{4}$/.test(token));
+  if (suburbTokens.length === 0) return null;
+  return {
+    street: streetTokens.length ? normalizeAddressKey(streetTokens.join(" ")) : undefined,
+    suburb: normalizeAddressKey(suburbTokens.join(" ")),
+  };
 }
 
 export function isAustralianResult(result: GeocodingResult): boolean {

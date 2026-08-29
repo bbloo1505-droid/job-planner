@@ -204,7 +204,7 @@ export function AddressSearchField({
               setError(null);
               onQueryChange(event.target.value);
             }}
-            className="h-8 w-full min-w-0 rounded-md border border-hairline bg-white px-2 text-[13px] text-slate-700 outline-none hover:border-slate-300 focus:border-brand focus:text-slate-900 focus:ring-3 focus:ring-brand/15"
+            className="h-9 w-full min-w-0 rounded-xl border border-hairline bg-white px-3 text-[13px] text-slate-700 outline-none hover:border-slate-300 focus:border-brand focus:text-slate-900 focus:ring-3 focus:ring-brand/15"
           />
           {showList ? (
             <ul

@@ -31,14 +31,24 @@ export function DayTimeline() {
   const { settings, stops } = plan;
   const lastStop = stops[stops.length - 1];
   const lastJob = lastStop ? jobs[lastStop.jobId] : undefined;
-  const returnMinutes = returnLegMinutes(settings, lastJob);
+  const returnMinutes = returnLegMinutes(
+    settings,
+    lastJob,
+    plan.returnTravelMinutes
+  );
+  const returnMeters = plan.returnTravelMeters;
   const returnTime =
     lastStop?.suggestedDeparture && returnMinutes != null
       ? addMinutes(lastStop.suggestedDeparture, returnMinutes)
       : null;
 
   const dayEnd = settings.workingHoursEnd;
-  const spareMinutes = minutesBeforeWorkingDayEnd(settings, stops, jobs);
+  const spareMinutes = minutesBeforeWorkingDayEnd(
+    settings,
+    stops,
+    jobs,
+    plan.returnTravelMinutes
+  );
 
   return (
     <section
@@ -78,7 +88,10 @@ export function DayTimeline() {
             if (!job) return null;
             return (
               <div key={stop.id}>
-                <TravelSegment minutes={stop.travelMinutesFromPrevious} />
+                <TravelSegment
+                  minutes={stop.travelMinutesFromPrevious}
+                  meters={stop.travelMetersFromPrevious}
+                />
                 <TimelineStop
                   stop={stop}
                   job={job}
@@ -92,7 +105,7 @@ export function DayTimeline() {
 
         {lastJob ? (
           <>
-            <TravelSegment minutes={returnMinutes} />
+            <TravelSegment minutes={returnMinutes} meters={returnMeters} />
             <div className={cn(TIMELINE_GRID, "items-center py-1")}>
               <span className="text-right text-[13px] font-medium whitespace-nowrap text-slate-500 tabular-nums">
                 {returnTime ? formatDisplayTime(returnTime) : ""}

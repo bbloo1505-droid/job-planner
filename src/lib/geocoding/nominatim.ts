@@ -1,4 +1,5 @@
 import type { GeocodingResult } from "@/lib/types";
+import { parseAddressQuery, titleCasePlace } from "@/lib/geocoding/match-address";
 import {
   enqueueNominatim,
   NominatimTimeoutError,
@@ -88,10 +89,12 @@ export function expandStreetAbbreviations(query: string): string {
   return next.replace(/\s+/g, " ").trim();
 }
 
-export function formatNominatimDisplay(hit: NominatimHit): string {
+export function formatNominatimDisplay(hit: NominatimHit, query?: string): string {
   const address = hit.address ?? {};
-  const street = [address.house_number, address.road].filter(Boolean).join(" ");
-  const suburb = localityOf(address, hit.display_name);
+  const parsed = query ? parseAddressQuery(query) : {};
+  const house = address.house_number || parsed.houseNumber;
+  const street = [house, address.road].filter(Boolean).join(" ");
+  const suburb = localityOf(address, hit.display_name, query);
   const state = abbreviateState(address.state);
   const region = [state, address.postcode].filter(Boolean).join(" ");
   if (street && suburb) {
@@ -102,24 +105,30 @@ export function formatNominatimDisplay(hit: NominatimHit): string {
     .join(", ");
 }
 
-export function mapNominatimHits(hits: NominatimHit[]): GeocodingResult[] {
+export function mapNominatimHits(
+  hits: NominatimHit[],
+  query?: string
+): GeocodingResult[] {
   const results: GeocodingResult[] = [];
   for (const hit of hits) {
-    const mapped = mapNominatimHit(hit);
+    const mapped = mapNominatimHit(hit, query);
     if (mapped) results.push(mapped);
   }
   return preferAustralian(results).slice(0, 5);
 }
 
-export function mapNominatimHit(hit: NominatimHit): GeocodingResult | null {
+export function mapNominatimHit(
+  hit: NominatimHit,
+  query?: string
+): GeocodingResult | null {
   const latitude = Number(hit.lat);
   const longitude = Number(hit.lon);
   if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return null;
   const address = hit.address ?? {};
-  const suburb = localityOf(address, hit.display_name);
+  const suburb = localityOf(address, hit.display_name, query);
   return {
     id: `nominatim:${hit.place_id ?? `${latitude},${longitude}`}`,
-    displayAddress: formatNominatimDisplay(hit),
+    displayAddress: formatNominatimDisplay(hit, query),
     latitude,
     longitude,
     suburb,
@@ -180,7 +189,7 @@ async function fetchNominatim(
   if (!Array.isArray(payload)) {
     throw new Error("Nominatim returned a malformed response");
   }
-  return mapNominatimHits(payload);
+  return mapNominatimHits(payload, query);
 }
 
 const METRO_LOCALITY =
@@ -190,7 +199,8 @@ const REGION_PART =
 
 function localityOf(
   address: NominatimAddress,
-  displayName?: string
+  displayName?: string,
+  query?: string
 ): string | undefined {
   const specific =
     firstSpecificLocality([
@@ -202,11 +212,29 @@ function localityOf(
       address.city_district,
     ]) ?? localityFromDisplayName(displayName, address.road);
   if (specific) return specific;
+
+  const typed = suburbFromTypedQuery(query);
+  if (typed && isMetroOrBlank(address.city) && isMetroOrBlank(address.municipality)) {
+    return typed;
+  }
+
   return (
     firstSpecificLocality([address.city, address.municipality]) ||
     address.city ||
     address.municipality
   );
+}
+
+function isMetroOrBlank(value?: string): boolean {
+  const trimmed = value?.trim();
+  return !trimmed || METRO_LOCALITY.test(trimmed);
+}
+
+function suburbFromTypedQuery(query?: string): string | undefined {
+  if (!query) return undefined;
+  const suburb = parseAddressQuery(query).suburb?.trim();
+  if (!suburb || METRO_LOCALITY.test(suburb)) return undefined;
+  return titleCasePlace(suburb);
 }
 
 function firstSpecificLocality(
