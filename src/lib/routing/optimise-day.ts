@@ -1,11 +1,12 @@
-import { pointOf } from "@/lib/geo";
+import { resolvedPointOf } from "@/lib/geo";
 import {
   addMinutes,
   minutesToTime,
   roundUpToInterval,
   timeToMinutes,
 } from "@/lib/routing/round-time";
-import { estimateTravelMinutes } from "@/lib/routing/travel";
+import { samplingDurationOf } from "@/lib/routing/sampling";
+import { estimateTravelMinutesOrNull } from "@/lib/routing/travel";
 import type {
   AppointmentConstraint,
   DayPlanSettings,
@@ -18,19 +19,19 @@ import type {
 } from "@/lib/types";
 
 function jobPoint(job: Job): GeoPoint | null {
-  return pointOf(job.latitude, job.longitude);
+  return resolvedPointOf(job.latitude, job.longitude, job.suburb);
 }
 
 function startPoint(settings: DayPlanSettings): GeoPoint | null {
-  return pointOf(settings.startLat, settings.startLng);
+  return resolvedPointOf(settings.startLat, settings.startLng);
 }
 
 function finishPoint(settings: DayPlanSettings): GeoPoint | null {
-  return pointOf(settings.finishLat, settings.finishLng);
+  return resolvedPointOf(settings.finishLat, settings.finishLng);
 }
 
 function visitMinutes(job: Job, settings: DayPlanSettings): number {
-  return settings.visitDurationMinutes || job.estimatedMinutes;
+  return samplingDurationOf(job, settings);
 }
 
 function constraintEarliest(constraint: AppointmentConstraint): number | null {
@@ -47,10 +48,12 @@ function travelBetween(
   from: GeoPoint | null,
   to: GeoPoint | null,
   buffer: number
-): number {
-  if (!from || !to) return buffer;
-  return estimateTravelMinutes(from, to, buffer);
+): number | null {
+  return estimateTravelMinutesOrNull(from, to, buffer);
 }
+
+/** Unresolved locations must not look cheaper than a real SEQ leg. */
+const UNRESOLVED_TRAVEL_PENALTY = 10_000;
 
 function applyConstraint(
   arrivalMinutes: number,
@@ -135,7 +138,8 @@ export function orderJobs(
     for (let i = 0; i < remaining.length; i += 1) {
       const job = remaining[i];
       const dest = jobPoint(job);
-      const travel = travelBetween(current, dest, settings.travelBufferMinutes);
+      const knownTravel = travelBetween(current, dest, settings.travelBufferMinutes);
+      const travel = knownTravel ?? UNRESOLVED_TRAVEL_PENALTY;
       const arrival = now + travel;
       const earliest = constraintEarliest(job.constraint);
       const feasibleStart =
@@ -152,7 +156,9 @@ export function orderJobs(
         if (other.id === job.id || other.constraint.type !== "fixed") continue;
         const fixedTime = timeToMinutes(other.constraint.time);
         const afterThis = feasibleStart + visitMinutes(job, settings);
-        const toFixed = travelBetween(dest, jobPoint(other), settings.travelBufferMinutes);
+        const toFixed =
+          travelBetween(dest, jobPoint(other), settings.travelBufferMinutes) ??
+          UNRESOLVED_TRAVEL_PENALTY;
         const arriveFixed = afterThis + toFixed;
         if (arriveFixed > fixedTime) {
           latePenalty += 8000 + (arriveFixed - fixedTime);
@@ -174,7 +180,8 @@ export function orderJobs(
 
     const next = remaining.splice(bestIndex, 1)[0];
     const dest = jobPoint(next);
-    const travel = travelBetween(current, dest, settings.travelBufferMinutes);
+    const travel =
+      travelBetween(current, dest, settings.travelBufferMinutes) ?? 0;
     const arrival = now + travel;
     const { appointment } = applyConstraint(arrival, next, settings);
     now = appointment + visitMinutes(next, settings);
@@ -204,7 +211,7 @@ export function assignTimes(
   jobsInOrder.forEach((job, index) => {
     const dest = jobPoint(job);
     const travel = travelBetween(previous, dest, settings.travelBufferMinutes);
-    const arrival = currentTime + travel;
+    const arrival = currentTime + (travel ?? 0);
     const result = applyConstraint(arrival, job, settings);
     const duration = visitMinutes(job, settings);
     const departure = result.appointment + duration;
@@ -228,22 +235,23 @@ export function assignTimes(
       order: index,
       suggestedArrival: minutesToTime(result.appointment),
       suggestedDeparture: minutesToTime(departure),
-      travelMinutesFromPrevious: travel,
+      travelMinutesFromPrevious: travel ?? undefined,
       isManuallyOrdered: existing?.isManuallyOrdered ?? false,
       conflict: result.conflict,
     });
 
-    totalTravelMinutes += travel;
+    if (travel != null) totalTravelMinutes += travel;
     currentTime = departure;
-    previous = dest ?? previous;
+    previous = dest;
   });
 
   const finish = finishPoint(settings);
-  const returnTravelMinutes =
+  const returnTravel =
     jobsInOrder.length > 0
       ? travelBetween(previous, finish, settings.travelBufferMinutes)
       : 0;
-  totalTravelMinutes += returnTravelMinutes;
+  const returnTravelMinutes = returnTravel ?? 0;
+  if (returnTravel != null) totalTravelMinutes += returnTravel;
 
   return {
     stops,

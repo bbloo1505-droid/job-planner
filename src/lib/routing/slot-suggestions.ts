@@ -1,3 +1,4 @@
+import { jobHasResolvedLocation } from "@/lib/geo";
 import { optimiseDay } from "@/lib/routing/optimise-day";
 import type {
   DayPlanSettings,
@@ -14,7 +15,7 @@ export function getSlotSuggestions(input: {
   limit?: number;
 }): SlotSuggestion[] {
   const { job, routeJobs, settings, existingStops, limit = 3 } = input;
-  if (!job) return [];
+  if (!job || !jobHasResolvedLocation(job)) return [];
 
   const current = optimiseDay({
     jobs: routeJobs,

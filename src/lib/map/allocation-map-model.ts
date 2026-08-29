@@ -154,6 +154,7 @@ export function buildAllocationMapModel(input: {
   selectedJobId: string | null;
   selectedConsultantId: string | null;
   workingDays: string[];
+  monthDays?: string[];
   allocationPreview: AllocationPreviewKey | null;
 }): AllocationMapModel {
   const hidden = new Set(input.hiddenConsultantIds);
@@ -204,7 +205,7 @@ export function buildAllocationMapModel(input: {
 
   for (const allocation of input.allocations) {
     if (hidden.has(allocation.consultantId)) continue;
-    const onScope = input.geoScope === "week" || allocation.scheduledDate === input.geoScope;
+    const onScope = allocationOnScope(allocation.scheduledDate, input.geoScope, input.workingDays, input.monthDays);
     const matchAnchor = matchMode && matchJobIds.has(allocation.jobId);
     if (!onScope && !matchAnchor) continue;
     const job = input.jobs[allocation.jobId];
@@ -376,6 +377,17 @@ export function searchMapMarkers(markers: MapMarkerModel[], query: string): MapM
     const hay = `${item.label} ${item.jobNumber} ${item.title ?? ""} ${item.consultantName}`.toLowerCase();
     return hay.includes(q);
   });
+}
+
+function allocationOnScope(
+  date: string,
+  geoScope: GeoScope,
+  workingDays: string[],
+  monthDays?: string[]
+): boolean {
+  if (geoScope === "month") return (monthDays ?? workingDays).includes(date);
+  if (geoScope === "week") return workingDays.includes(date);
+  return date === geoScope;
 }
 
 function pickActiveMatch(

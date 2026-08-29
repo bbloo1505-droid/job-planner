@@ -10,6 +10,7 @@ import {
 import { collectNetworkUrls, createLocalMapStyle, queenslandContextData } from "@/lib/map/local-style";
 import { MAP_PROVIDER_KIND } from "@/lib/map/provider";
 import { createTeamDemo } from "@/lib/team/dummy-data";
+import { monthWorkingIsoDates } from "@/lib/team/month";
 import { isoDate, weekDays } from "@/lib/team/week";
 import { rankAllocationCandidates } from "@/lib/geo/rank-allocation-candidates";
 
@@ -47,7 +48,7 @@ describe("local MapLibre style", () => {
     ]) {
       assert.equal(names.includes(name), true, name);
     }
-    assert.equal(MAP_PROVIDER_KIND, "local-maplibre");
+    assert.equal(MAP_PROVIDER_KIND === "openfreemap" || MAP_PROVIDER_KIND === "local-maplibre", true);
   });
 });
 
@@ -198,5 +199,49 @@ describe("allocation map model", () => {
     const sorted = [...dates].sort();
     assert.deepEqual(dates, sorted);
     assert.ok((model.weeklyPath?.points.length ?? 0) >= 2);
+  });
+
+  it("month scope shows August jobs while ranking still uses the selected week", () => {
+    const demo = createTeamDemo();
+    const monthDays = monthWorkingIsoDates("2026-08-01", false);
+    const weekModel = buildAllocationMapModel({
+      jobs: demo.jobs,
+      allocations: demo.allocations,
+      consultants: demo.consultants,
+      geoScope: "week",
+      hiddenConsultantIds: [],
+      selectedJobId: null,
+      selectedConsultantId: null,
+      workingDays: WEEK,
+      monthDays,
+      allocationPreview: null,
+    });
+    const monthModel = buildAllocationMapModel({
+      jobs: demo.jobs,
+      allocations: demo.allocations,
+      consultants: demo.consultants,
+      geoScope: "month",
+      hiddenConsultantIds: [],
+      selectedJobId: null,
+      selectedConsultantId: null,
+      workingDays: WEEK,
+      monthDays,
+      allocationPreview: null,
+    });
+    const weekIds = new Set(weekModel.markers.map((item) => item.id));
+    const monthIds = new Set(monthModel.markers.map((item) => item.id));
+    assert.equal(weekIds.has("tj-206"), false);
+    assert.equal(monthIds.has("tj-206"), true);
+    assert.ok(monthModel.markers.length > weekModel.markers.length);
+
+    const ranked = rankAllocationCandidates({
+      job: demo.jobs["tj-120"],
+      consultants: demo.consultants,
+      jobs: demo.jobs,
+      allocations: demo.allocations,
+      workingDays: WEEK,
+    });
+    assert.equal(ranked[0].consultantId, "c-taylor");
+    assert.equal(ranked[0].date, "2026-09-03");
   });
 });

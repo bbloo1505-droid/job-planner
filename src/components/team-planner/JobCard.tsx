@@ -3,6 +3,7 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { AlertTriangle, Lock } from "lucide-react";
+import { PriorityPill } from "@/components/ui/priority-pill";
 import { dueStateLabel } from "@/lib/team/due-label";
 import { formatDisplayTime } from "@/lib/routing/round-time";
 import { useTeamPlannerStore } from "@/lib/store/team-planner-store";
@@ -10,22 +11,28 @@ import { workCategoryMeta } from "@/lib/team/work-category";
 import type { Allocation, Job, Priority } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
+function shortTitle(title: string): string {
+  return title.replace(/ Survey$/i, "").replace(/ Inspection$/i, "").replace(/ analysis$/i, "");
+}
+
 export function JobCard({
   job,
   allocation,
-  selected,
+  selected: selectedProp,
   conflict,
   onSelect,
   onCategoryMenu,
   sortableId,
+  compact = false,
 }: {
   job: Job;
   allocation?: Allocation;
-  selected: boolean;
+  selected?: boolean;
   conflict?: boolean;
   onSelect: () => void;
   onCategoryMenu: (jobId: string, position: { x: number; y: number }) => void;
   sortableId: string;
+  compact?: boolean;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({
@@ -39,6 +46,8 @@ export function JobCard({
       },
     });
 
+  const selectedFromStore = useTeamPlannerStore((state) => state.selectedJobId === job.id);
+  const selected = selectedProp ?? selectedFromStore;
   const weekStart = useTeamPlannerStore((state) => state.weekStart);
   const due = dueStateLabel(job.dueDate, new Date(), weekStart);
   const priority = (job.priority ?? "normal") as Priority;
@@ -93,14 +102,16 @@ export function JobCard({
         }
       }}
       className={cn(
-        "w-full cursor-grab rounded-[2px] px-1.5 py-1 text-left active:cursor-grabbing",
-        selected && "ring-2 ring-navy ring-offset-1",
-        isDragging && "z-20 opacity-70",
+        "w-full cursor-grab rounded-lg text-left active:cursor-grabbing",
+        compact ? "px-2 py-1" : "px-2.5 py-1.5",
+        selected && "ring-2 ring-navy/80 ring-offset-1",
+        isDragging && "z-20 opacity-80",
+        "shadow-[inset_0_1px_0_rgb(255_255_255_/_0.35),0_1px_2px_rgb(15_23_42_/_0.08)]",
         "focus-visible:ring-2 focus-visible:ring-navy focus-visible:outline-none"
       )}
     >
       <span className="flex items-start justify-between gap-1">
-        <span className="min-w-0 truncate text-[12px] leading-4 font-semibold">
+        <span className={cn("min-w-0 truncate font-semibold", compact ? "text-[11px] leading-4" : "text-[12px] leading-4")}>
           {heading}
         </span>
         <span className="flex shrink-0 items-center gap-0.5">
@@ -109,22 +120,25 @@ export function JobCard({
           ) : null}
           {conflict ? <AlertTriangle className="size-3" strokeWidth={2} /> : null}
           {priority !== "normal" ? (
-            <span
-              className="text-[9px] font-semibold tracking-wide uppercase"
-              style={{ color: category.onDark ? "#fff" : undefined }}
-            >
-              {priority}
-            </span>
+            <PriorityPill priority={priority} compact />
           ) : null}
         </span>
       </span>
-      <span className="mt-0.5 block truncate text-[11px] leading-4" style={{ color: category.muted }}>
+      <span
+        className={cn("block truncate", compact ? "text-[10px] leading-3.5" : "mt-0.5 text-[11px] leading-4")}
+        style={{ color: category.muted }}
+      >
         {job.workCategory === "not_available"
           ? "Unavailable"
-          : `${time ? formatDisplayTime(time) : "Flexible"}${job.title ? ` · ${job.title}` : ""}`}
+          : `${time ? formatDisplayTime(time) : "Flex"}${job.title ? ` · ${compact ? shortTitle(job.title) : job.title}` : ""}`}
       </span>
-      {due && job.workCategory !== "not_available" ? (
-        <span className="mt-0.5 block text-[10px] leading-3" style={{ color: category.muted }}>
+      {compact && job.jobNumber && job.workCategory !== "not_available" ? (
+        <span className="block truncate text-[9px] leading-3" style={{ color: category.muted }}>
+          {job.jobNumber}
+        </span>
+      ) : null}
+      {due && job.workCategory !== "not_available" && (!compact || due === "Due today" || due === "Overdue" || due.startsWith("Due ")) ? (
+        <span className={cn("block", compact ? "text-[9px] leading-3" : "mt-0.5 text-[10px] leading-3")} style={{ color: category.muted }}>
           {due}
         </span>
       ) : null}

@@ -36,7 +36,7 @@ export function SlotSuggestionsPanel() {
 
   return (
     <section className="panel animate-in fade-in slide-in-from-right-1 duration-150">
-      <div className="border-b border-hairline px-4 py-2.5">
+      <div className="panel-header">
         <button
           type="button"
           onClick={() => selectJob(null)}
@@ -61,12 +61,12 @@ export function SlotSuggestionsPanel() {
       ) : (
         <div className="p-3">
           {best ? (
-            <div className="rounded-lg border border-brand/30 bg-brand/[0.05] p-3">
+            <div className="soft-card border-brand/20 bg-brand/[0.04] p-3.5">
               <div className="flex items-baseline justify-between gap-2">
                 <span className="text-[26px] leading-none font-semibold tracking-tight text-slate-900 tabular-nums">
                   {formatDisplayTime(best.appointmentTime)}
                 </span>
-                <span className="rounded bg-prensa-green/15 px-1.5 py-px text-[9.5px] font-semibold tracking-[0.06em] text-prensa-green-ink uppercase">
+                <span className="rounded-full bg-prensa-green/15 px-2 py-0.5 text-[9.5px] font-semibold tracking-[0.06em] text-prensa-green-ink uppercase">
                   Best fit
                 </span>
               </div>

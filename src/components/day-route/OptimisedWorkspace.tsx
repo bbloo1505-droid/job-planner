@@ -16,7 +16,9 @@ import { NearbyJobsPanel } from "@/components/day-route/NearbyJobsPanel";
 import { RouteStatusBar } from "@/components/day-route/RouteStatusBar";
 import { SlotSuggestionsPanel } from "@/components/day-route/SlotSuggestionsPanel";
 import { StopEditor } from "@/components/day-route/StopEditor";
-import { RouteMapView } from "@/components/map/RouteMapView";
+import { SuggestedBookingTimes } from "@/components/day-route/SuggestedBookingTimes";
+import { UnlocatedProperties } from "@/components/day-route/UnlocatedProperties";
+import { DayRouteMap } from "@/components/day-route/DayRouteMap";
 import { Button } from "@/components/ui/button";
 import { safeDate } from "@/lib/format";
 import {
@@ -25,6 +27,7 @@ import {
   plannedReturnTime,
   totalDrivingMinutes,
 } from "@/lib/route-summary";
+import { totalSamplingMinutes } from "@/lib/routing/sampling";
 import { formatDisplayTime } from "@/lib/routing/round-time";
 import { useDayRouteStore } from "@/lib/store/day-route-store";
 
@@ -40,6 +43,8 @@ export function OptimisedWorkspace() {
   const runOptimise = useDayRouteStore((state) => state.runOptimise);
   const undo = useDayRouteStore((state) => state.undo);
   const undoStack = useDayRouteStore((state) => state.undoStack);
+  const unlocatedJobIds = useDayRouteStore((state) => state.unlocatedJobIds);
+  const recalculate = useDayRouteStore((state) => state.recalculate);
 
   const [confirmReoptimise, setConfirmReoptimise] = useState(false);
 
@@ -90,6 +95,7 @@ export function OptimisedWorkspace() {
   const date = safeDate(settings.date);
   const finishTime = plannedReturnTime(settings, stops, jobs);
   const driving = totalDrivingMinutes(settings, stops, jobs);
+  const sampling = totalSamplingMinutes(stops, jobs, settings);
   const remaining = minutesBeforeWorkingDayEnd(settings, stops, jobs);
 
   const routeJobs = stops
@@ -105,11 +111,13 @@ export function OptimisedWorkspace() {
     ["uncontacted", "contact_attempted"].includes(job.bookingStatus)
   ).length;
   const conflicts = stops.filter((stop) => stop.conflict).length;
+  const typedForDay = stops.length + unlocatedJobIds.length;
+  const bookingCount = stops.filter((stop) => stop.suggestedArrival).length;
 
   return (
     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
       <div className="flex h-full flex-col bg-canvas">
-        <header className="shrink-0 border-b border-hairline bg-white px-7 pt-3.5 pb-3">
+        <header className="shrink-0 border-b border-slate-200/70 bg-white px-7 pt-5 pb-4">
           <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
             <div className="min-w-0">
               <p className="eyebrow">Day route</p>
@@ -132,6 +140,9 @@ export function OptimisedWorkspace() {
               <Button type="button" variant="outline" size="sm" onClick={backToPlanning}>
                 <SlidersHorizontal />
                 Edit properties
+              </Button>
+              <Button type="button" variant="outline" size="sm" onClick={recalculate}>
+                Recalculate
               </Button>
               <Button
                 type="button"
@@ -157,7 +168,9 @@ export function OptimisedWorkspace() {
 
           <div className="mt-2 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[12.5px] text-slate-600">
             <Metric>
-              {stops.length} {stops.length === 1 ? "stop" : "stops"}
+              {typedForDay > stops.length
+                ? `${stops.length} of ${typedForDay} properties planned`
+                : `${stops.length} ${stops.length === 1 ? "stop" : "stops"}`}
             </Metric>
             <Dot />
             <Metric>
@@ -165,7 +178,14 @@ export function OptimisedWorkspace() {
               {finishTime ? ` – ${formatDisplayTime(finishTime)}` : ""}
             </Metric>
             <Dot />
-            <Metric>{formatDuration(driving)} driving</Metric>
+            <Metric>{formatDuration(driving)} estimated driving</Metric>
+            <Dot />
+            <Metric>{formatDuration(sampling)} sampling</Metric>
+            <Dot />
+            <Metric>
+              {bookingCount} suggested booking{" "}
+              {bookingCount === 1 ? "time" : "times"}
+            </Metric>
             {confirmed > 0 ? (
               <>
                 <Dot />
@@ -198,7 +218,7 @@ export function OptimisedWorkspace() {
               <>
                 <Dot />
                 <Metric className="font-medium text-amber-700">
-                  exceeds working day by {formatDuration(-remaining)}
+                  {formatDuration(-remaining)} beyond working day
                 </Metric>
               </>
             ) : null}
@@ -211,8 +231,10 @@ export function OptimisedWorkspace() {
 
         <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-auto px-7 py-4 lg:flex-row lg:overflow-hidden">
           <div className="min-w-0 space-y-4 lg:flex-1 lg:overflow-y-auto lg:pb-1">
+            <SuggestedBookingTimes />
+            <UnlocatedProperties />
             <DayTimeline />
-            <RouteMapView />
+            <DayRouteMap />
           </div>
 
           <aside className="w-full shrink-0 space-y-3 lg:w-[326px] lg:overflow-y-auto lg:pb-1 xl:w-[348px]">

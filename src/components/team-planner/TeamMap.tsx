@@ -1,21 +1,30 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { format } from "date-fns";
-import { MapCanvas } from "@/components/team-planner/MapCanvas";
+import { AllocationMap } from "@/components/map/providers/AllocationMap";
+import { DevMapProviderSwitch } from "@/components/map/providers/DevMapProviderSwitch";
 import { consultantFirstName } from "@/lib/geo/rank-allocation-candidates";
 import {
   buildAllocationMapModel,
   locationsForFit,
   searchMapMarkers,
 } from "@/lib/map/allocation-map-model";
+import { useMapProviderRuntime } from "@/lib/map/map-provider-runtime";
 import {
+  GOOGLE_MAP_NOTICE,
+  GOOGLE_SYNTHETIC_NOTICE,
+  GOOGLE_TRAVEL_NOTICE,
   LOCAL_MAP_NOTICE,
   LOCAL_TRAVEL_NOTICE,
-  MAP_PROVIDER_KIND,
+  OPENFREEMAP_MAP_NOTICE,
+  OPENFREEMAP_OSM_NOTICE,
+  OPENFREEMAP_TRAVEL_NOTICE,
+  SCHEMATIC_INSERTION_NOTICE,
   WEEKLY_PATH_NOTICE,
   type MapPadding,
 } from "@/lib/map/provider";
+import { monthWorkingIsoDates } from "@/lib/team/month";
 import { isoDate, weekDays, weekRangeLabel } from "@/lib/team/week";
 import { allocationForJob, useTeamPlannerStore } from "@/lib/store/team-planner-store";
 import { cn } from "@/lib/utils";
@@ -30,6 +39,9 @@ export function TeamMap({ variant }: { variant: "full" | "split" }) {
   const selectedJobId = useTeamPlannerStore((state) => state.selectedJobId);
   const selectedConsultantId = useTeamPlannerStore((state) => state.selectedConsultantId);
   const weekStart = useTeamPlannerStore((state) => state.weekStart);
+  const monthStart = useTeamPlannerStore((state) => state.monthStart);
+  const showWeekends = useTeamPlannerStore((state) => state.showWeekends);
+  const selectedDate = useTeamPlannerStore((state) => state.selectedDate);
   const geoScope = useTeamPlannerStore((state) => state.geoScope);
   const search = useTeamPlannerStore((state) => state.search);
   const mapHiddenConsultantIds = useTeamPlannerStore((state) => state.mapHiddenConsultantIds);
@@ -41,11 +53,17 @@ export function TeamMap({ variant }: { variant: "full" | "split" }) {
     (state) => state.toggleMapConsultantHidden
   );
   const setSearch = useTeamPlannerStore((state) => state.setSearch);
+  const mapRuntime = useMapProviderRuntime();
+  const overlayPanel = useOverlayPanel();
+  const padding = overlayPadding(variant === "full" ? FULL_PAD : SPLIT_PAD, overlayPanel);
 
   const days = useMemo(() => weekDays(weekStart), [weekStart]);
   const workingDays = useMemo(() => days.map(isoDate), [days]);
+  const monthDays = useMemo(
+    () => monthWorkingIsoDates(monthStart, showWeekends),
+    [monthStart, showWeekends]
+  );
   const weekFocus = geoScope === "week" && Boolean(selectedConsultantId);
-  const padding = variant === "full" ? FULL_PAD : SPLIT_PAD;
 
   const selectedJob = selectedJobId ? jobs[selectedJobId] : undefined;
   const selectedAllocation = selectedJob
@@ -64,6 +82,7 @@ export function TeamMap({ variant }: { variant: "full" | "split" }) {
         selectedJobId,
         selectedConsultantId,
         workingDays,
+        monthDays,
         allocationPreview,
       }),
     [
@@ -73,6 +92,7 @@ export function TeamMap({ variant }: { variant: "full" | "split" }) {
       geoScope,
       jobs,
       mapHiddenConsultantIds,
+      monthDays,
       selectedConsultantId,
       selectedJobId,
       workingDays,
@@ -101,11 +121,11 @@ export function TeamMap({ variant }: { variant: "full" | "split" }) {
     <section
       className={cn(
         "flex min-h-0 flex-col bg-white",
-        variant === "split" ? "h-full min-h-[280px]" : "h-full"
+        variant === "split" ? "h-full min-h-[320px]" : "h-full"
       )}
       data-testid="geo-map"
       data-geo-scope={geoScope}
-      data-map-provider={MAP_PROVIDER_KIND}
+      data-map-provider={mapRuntime.render}
       data-insertion-preview={model.insertionPreview ? "true" : "false"}
       data-insertion-path={
         model.insertionPreview
@@ -117,7 +137,50 @@ export function TeamMap({ variant }: { variant: "full" | "split" }) {
     >
       <div className="shrink-0 border-b border-hairline px-3 py-1.5">
         <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
-          <div className="flex flex-wrap items-center gap-1" role="tablist" aria-label="Map day">
+          <div className="flex flex-wrap items-center gap-1" role="tablist" aria-label="Map period">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={geoScope !== "week" && geoScope !== "month"}
+              data-geo-period="day"
+              onClick={() => setGeoScope(selectedDate ?? workingDays[0] ?? weekStart)}
+              className={cn(
+                "h-6 rounded px-2 text-[10.5px] font-semibold tracking-wide",
+                geoScope !== "week" && geoScope !== "month"
+                  ? "bg-navy text-white"
+                  : "bg-slate-50 text-slate-600 hover:bg-slate-100"
+              )}
+            >
+              Selected day
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={geoScope === "week"}
+              data-geo-day="week"
+              data-geo-period="week"
+              onClick={() => setGeoScope("week")}
+              className={cn(
+                "h-6 rounded px-2 text-[10.5px] font-semibold tracking-wide",
+                geoScope === "week" ? "bg-navy text-white" : "bg-slate-50 text-slate-600 hover:bg-slate-100"
+              )}
+            >
+              Selected week
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={geoScope === "month"}
+              data-geo-period="month"
+              onClick={() => setGeoScope("month")}
+              className={cn(
+                "h-6 rounded px-2 text-[10.5px] font-semibold tracking-wide",
+                geoScope === "month" ? "bg-navy text-white" : "bg-slate-50 text-slate-600 hover:bg-slate-100"
+              )}
+            >
+              Whole month
+            </button>
+            <span className="mx-1 h-4 w-px bg-hairline" />
             {days.map((day) => {
               const iso = isoDate(day);
               const label = format(day, "EEE").toUpperCase();
@@ -139,34 +202,24 @@ export function TeamMap({ variant }: { variant: "full" | "split" }) {
                 </button>
               );
             })}
-            <button
-              type="button"
-              role="tab"
-              aria-selected={geoScope === "week"}
-              data-geo-day="week"
-              onClick={() => setGeoScope("week")}
-              className={cn(
-                "h-6 rounded px-2 text-[10.5px] font-semibold tracking-wide",
-                geoScope === "week" ? "bg-navy text-white" : "bg-slate-50 text-slate-600 hover:bg-slate-100"
-              )}
-            >
-              WHOLE WEEK
-            </button>
           </div>
-          {variant === "full" || variant === "split" ? (
-            <input
-              className="field-input h-6 max-w-[180px] text-[12px]"
-              placeholder="Search location or job no."
-              value={search}
-              onChange={(event) => {
-                const value = event.target.value;
-                setSearch(value);
-                const hits = searchMapMarkers(model.markers, value);
-                if (hits.length === 1) selectJob(hits[0].id);
-              }}
-              aria-label="Search jobs on map"
-            />
-          ) : null}
+          <div className="flex flex-wrap items-center gap-2">
+            <DevMapProviderSwitch />
+            {variant === "full" || variant === "split" ? (
+              <input
+                className="field-input h-6 max-w-[180px] text-[12px]"
+                placeholder="Search location or job no."
+                value={search}
+                onChange={(event) => {
+                  const value = event.target.value;
+                  setSearch(value);
+                  const hits = searchMapMarkers(model.markers, value);
+                  if (hits.length === 1) selectJob(hits[0].id);
+                }}
+                aria-label="Search jobs on map"
+              />
+            ) : null}
+          </div>
         </div>
         <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
           {consultants.map((consultant) => {
@@ -219,8 +272,8 @@ export function TeamMap({ variant }: { variant: "full" | "split" }) {
         </div>
       </div>
 
-      <div className={cn("relative min-h-0", variant === "full" ? "flex-1" : "min-h-[280px] flex-1")}>
-        <MapCanvas
+      <div className={cn("relative min-h-0", variant === "full" ? "flex-1" : "min-h-[320px] flex-1")}>
+        <AllocationMap
           model={model}
           fitKey={fitKey}
           fitLocations={fitLocations}
@@ -229,15 +282,48 @@ export function TeamMap({ variant }: { variant: "full" | "split" }) {
           insertionActive={Boolean(model.insertionPreview)}
           onSelectJob={selectJob}
         />
-        {weekFocus ? (
-          <p className="pointer-events-none absolute top-2 right-2 z-10 rounded border border-hairline bg-white/95 px-2 py-1 text-[10.5px] text-slate-500">
-            {WEEKLY_PATH_NOTICE}
-          </p>
-        ) : null}
-        <div className="pointer-events-none absolute right-2 bottom-2 left-2 z-10 flex items-end justify-between gap-3">
+        <div className="pointer-events-none absolute top-2 right-2 z-10 flex flex-col items-end gap-1">
+          {weekFocus ? (
+            <p className="rounded border border-hairline bg-white/95 px-2 py-1 text-[10.5px] text-slate-500">
+              {WEEKLY_PATH_NOTICE}
+            </p>
+          ) : null}
+          {model.insertionPreview ? (
+            <p
+              className="rounded border border-hairline bg-white/95 px-2 py-1 text-[10.5px] text-slate-500"
+              data-testid="schematic-insertion-caption"
+            >
+              {SCHEMATIC_INSERTION_NOTICE}
+            </p>
+          ) : null}
+        </div>
+        <div
+          className={cn(
+            "pointer-events-none absolute right-2 left-2 z-10 flex items-end justify-between gap-3",
+            mapRuntime.render === "google" || mapRuntime.render === "openfreemap"
+              ? "bottom-10"
+              : "bottom-2"
+          )}
+        >
           <div>
-            <p className="text-[10.5px] text-slate-500">{LOCAL_MAP_NOTICE}</p>
-            <p className="text-[10.5px] text-slate-400">{LOCAL_TRAVEL_NOTICE}</p>
+            {mapRuntime.render === "google" ? (
+              <>
+                <p className="text-[10.5px] text-slate-600">{GOOGLE_MAP_NOTICE}</p>
+                <p className="text-[10.5px] text-slate-500">{GOOGLE_SYNTHETIC_NOTICE}</p>
+                <p className="text-[10.5px] text-slate-400">{GOOGLE_TRAVEL_NOTICE}</p>
+              </>
+            ) : mapRuntime.render === "openfreemap" ? (
+              <>
+                <p className="text-[10.5px] text-slate-600">{OPENFREEMAP_MAP_NOTICE}</p>
+                <p className="text-[10.5px] text-slate-500">{OPENFREEMAP_OSM_NOTICE}</p>
+                <p className="text-[10.5px] text-slate-400">{OPENFREEMAP_TRAVEL_NOTICE}</p>
+              </>
+            ) : (
+              <>
+                <p className="text-[10.5px] text-slate-500">{LOCAL_MAP_NOTICE}</p>
+                <p className="text-[10.5px] text-slate-400">{LOCAL_TRAVEL_NOTICE}</p>
+              </>
+            )}
             <p className="text-[10.5px] text-slate-400">{weekRangeLabel(weekStart)}</p>
           </div>
           <ConsultantLegend consultants={consultants} />
@@ -271,4 +357,25 @@ function ConsultantLegend({
       </div>
     </div>
   );
+}
+
+function useOverlayPanel(): boolean {
+  const [overlay, setOverlay] = useState(false);
+  useEffect(() => {
+    const media = window.matchMedia("(max-width: 767px)");
+    const apply = () => setOverlay(media.matches);
+    apply();
+    media.addEventListener("change", apply);
+    return () => media.removeEventListener("change", apply);
+  }, []);
+  return overlay;
+}
+
+function overlayPadding(base: MapPadding, overlay: boolean): MapPadding {
+  if (!overlay) return base;
+  return {
+    ...base,
+    right: Math.max(base.right, 276),
+    bottom: Math.max(base.bottom, 80),
+  };
 }

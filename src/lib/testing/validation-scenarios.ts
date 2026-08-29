@@ -63,6 +63,14 @@ function job(
     latitude: geo?.lat,
     longitude: geo?.lng,
     estimatedMinutes: extras.estimatedMinutes ?? DEFAULT_SETTINGS.visitDurationMinutes,
+    samplingDurationMinutes:
+      extras.samplingDurationMinutes ??
+      extras.estimatedMinutes ??
+      DEFAULT_SETTINGS.visitDurationMinutes,
+    geocodingStatus: geo ? "confirmed" : "unresolved",
+    geocodingProvider: geo ? "local-lookup" : undefined,
+    enteredAddress: address,
+    resolvedDisplayAddress: geo?.address ?? address,
     constraint: extras.constraint ?? { type: "flexible" },
     bookingStatus: extras.bookingStatus ?? "uncontacted",
     priority: extras.priority ?? "normal",

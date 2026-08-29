@@ -140,15 +140,43 @@ const SUBURB_NAMES = Object.keys(SUBURB_CENTROIDS).sort(
   (a, b) => b.length - a.length
 );
 
+const STREET_SUFFIX_ALIASES: Array<[RegExp, string]> = [
+  [/\b(?:street|str)\b/g, "st"],
+  [/\broad\b/g, "rd"],
+  [/\bavenue\b/g, "ave"],
+  [/\bparade\b/g, "pde"],
+  [/\b(?:court|crt)\b/g, "ct"],
+  [/\b(?:drive|drv)\b/g, "dr"],
+  [/\bplace\b/g, "pl"],
+  [/\b(?:crescent|cres)\b/g, "cr"],
+  [/\b(?:boulevard|blvd|bvd)\b/g, "blvd"],
+  [/\bterrace\b/g, "tce"],
+  [/\bhighway\b/g, "hwy"],
+  [/\blane\b/g, "ln"],
+  [/\bclose\b/g, "cl"],
+  [/\bcircuit\b/g, "cct"],
+];
+
 export function normalizeAddressKey(text: string): string {
-  return text
+  let key = text
     .toLowerCase()
     .replace(/\bqld\b/g, "")
     .replace(/\b\d{4}\b/g, "")
-    .replace(/[.]/g, "")
+    .replace(/[^\w\s-]/g, " ")
     .replace(/\s+/g, " ")
     .trim();
+  for (const [pattern, canonical] of STREET_SUFFIX_ALIASES) {
+    key = key.replace(pattern, canonical);
+  }
+  return key.replace(/\s+/g, " ").trim();
 }
+
+const ADDRESS_INDEX: Record<
+  string,
+  { address: string; suburb: string; lat: number; lng: number }
+> = Object.fromEntries(
+  Object.entries(ADDRESS_LOOKUP).map(([key, value]) => [normalizeAddressKey(key), value])
+);
 
 function titleCaseSuburb(name: string): string {
   return name
@@ -190,19 +218,26 @@ export function haversineDistanceKm(from: GeoPoint, to: GeoPoint): number {
   return earthRadiusKm * c;
 }
 
+/** Exact synthetic lookup only — never suburb-centroid guesses. */
+export function geocodeExactAddress(text: string): GeocodeResult | null {
+  const trimmed = text.trim();
+  if (!trimmed) return null;
+  const exact = ADDRESS_INDEX[normalizeAddressKey(trimmed)];
+  return exact ? { ...exact } : null;
+}
+
 export class LocalLookupGeocoder implements GeocodingProvider {
   geocodeAddress(text: string): GeocodeResult | null {
     const trimmed = text.trim();
     if (!trimmed) return null;
 
-    const key = normalizeAddressKey(trimmed);
-    const exact = ADDRESS_LOOKUP[key];
-    if (exact) return { ...exact };
+    const exact = geocodeExactAddress(trimmed);
+    if (exact) return exact;
 
-    const suburbKey = findSuburb(key);
+    const suburbKey = findSuburb(normalizeAddressKey(trimmed));
     if (suburbKey) {
       const centroid = SUBURB_CENTROIDS[suburbKey];
-      const offset = hashOffset(key, centroid);
+      const offset = hashOffset(normalizeAddressKey(trimmed), centroid);
       const suburb = titleCaseSuburb(suburbKey);
       return {
         address: trimmed,
@@ -212,12 +247,7 @@ export class LocalLookupGeocoder implements GeocodingProvider {
       };
     }
 
-    return {
-      address: trimmed,
-      suburb: "Unknown",
-      lat: -27.4698,
-      lng: 153.0251,
-    };
+    return null;
   }
 }
 
@@ -233,5 +263,33 @@ export function pointOf(
   lng: number | undefined
 ): GeoPoint | null {
   if (lat === undefined || lng === undefined) return null;
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
   return { lat, lng };
+}
+
+/** A stop is only geographic when it has real coordinates — never "Unknown" at a fallback point. */
+export function resolvedPointOf(
+  lat: number | undefined,
+  lng: number | undefined,
+  suburb?: string
+): GeoPoint | null {
+  if (suburb === "Unknown") return null;
+  return pointOf(lat, lng);
+}
+
+export function jobHasResolvedLocation(job: {
+  latitude?: number;
+  longitude?: number;
+  suburb?: string;
+  geocodingStatus?: string;
+}): boolean {
+  if (
+    job.geocodingStatus === "stale" ||
+    job.geocodingStatus === "unresolved" ||
+    job.geocodingStatus === "not_found" ||
+    job.geocodingStatus === "needs_confirmation"
+  ) {
+    return false;
+  }
+  return resolvedPointOf(job.latitude, job.longitude, job.suburb) !== null;
 }

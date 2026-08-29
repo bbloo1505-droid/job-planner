@@ -59,8 +59,10 @@
   --color-prensa-green: #7ac143;
   --color-prensa-green-ink: #46761f;
   --color-prensa-orange: #f7941e;
-  --color-canvas: #f4f6f9;
-  --color-hairline: #e5e9ef;
+  --color-canvas: #f3f5f8;
+  --color-hairline: #e4e8ee;
+  --shadow-card: 0 1px 2px rgb(26 39 68 / 0.04), 0 10px 28px -16px rgb(26 39 68 / 0.18);
+  --shadow-card-hover: 0 2px 4px rgb(26 39 68 / 0.05), 0 14px 32px -16px rgb(26 39 68 / 0.22);
 }
 
 :root {
@@ -150,21 +152,94 @@
   }
 
   .field-input {
-    @apply h-8 w-full rounded-lg border border-hairline bg-white px-2.5 text-[13px] text-slate-900 transition-colors outline-none;
+    @apply h-9 w-full rounded-xl border border-hairline bg-white px-3 text-[13px] text-slate-900 transition-colors outline-none;
     @apply hover:border-slate-300 focus:border-brand focus:ring-3 focus:ring-brand/15;
   }
 
   .panel {
-    @apply rounded-lg border border-hairline bg-white;
+    @apply rounded-2xl border border-white bg-white;
+    box-shadow: 0 1px 2px rgb(26 39 68 / 0.04), 0 10px 28px -16px rgb(26 39 68 / 0.18);
   }
 
   .panel-heading {
-    @apply text-[12.5px] font-semibold tracking-tight text-slate-900;
+    @apply text-[13px] font-semibold tracking-tight text-slate-900;
   }
 
   .eyebrow {
     @apply text-[10.5px] font-semibold tracking-[0.14em] text-slate-400 uppercase;
   }
+
+  .soft-card {
+    @apply rounded-xl border border-slate-200/70 bg-white;
+    box-shadow: 0 1px 2px rgb(15 23 42 / 0.04), 0 6px 16px -10px rgb(15 23 42 / 0.12);
+  }
+
+  .panel-header {
+    @apply border-b border-slate-100 px-5 py-3.5;
+  }
+}
+
+.prensa-planner-scroll {
+  scrollbar-gutter: stable;
+  overscroll-behavior-x: contain;
+}
+
+.prensa-planner-scroll [data-cell],
+.prensa-planner-scroll [data-date-col] {
+  scroll-margin-top: 52px;
+  scroll-margin-left: 176px;
+}
+
+.prensa-planner-scroll::-webkit-scrollbar {
+  height: 10px;
+  width: 10px;
+}
+
+.prensa-planner-scroll::-webkit-scrollbar-thumb {
+  background: #c5ced8;
+  border-radius: 8px;
+}
+
+.prensa-planner-corner,
+.prensa-planner-head,
+.prensa-planner-name {
+  border-right: 1px solid var(--color-hairline);
+  border-bottom: 1px solid var(--color-hairline);
+  background: #f8fafc;
+}
+
+.prensa-planner-head,
+.prensa-planner-corner {
+  position: sticky;
+  top: 0;
+  z-index: 16;
+}
+
+.prensa-planner-name,
+.prensa-planner-corner {
+  position: sticky;
+  left: 0;
+  z-index: 14;
+  background: #fff;
+  box-shadow: 6px 0 10px -8px rgb(26 39 68 / 0.45);
+}
+
+.prensa-planner-corner {
+  z-index: 22;
+  background: #f8fafc;
+}
+
+.prensa-planner-week-break {
+  box-shadow: inset 2px 0 0 #94a3b8;
+}
+
+.prensa-planner-today {
+  background: color-mix(in srgb, #1b7ab8 8%, #f8fafc);
+  box-shadow: inset 0 -2px 0 #1b7ab8;
+}
+
+.prensa-planner-week-break.prensa-planner-today {
+  box-shadow: inset 2px 0 0 #94a3b8, inset 0 -2px 0 #1b7ab8;
 }
 
 .prensa-map-canvas {
@@ -175,6 +250,28 @@
 .prensa-map-canvas .maplibregl-canvas-container,
 .prensa-map-canvas .maplibregl-canvas {
   outline: none;
+}
+
+.prensa-openfreemap .maplibregl-ctrl-attrib {
+  background: rgb(255 255 255 / 0.92);
+  font-size: 10px;
+  line-height: 1.35;
+}
+
+.prensa-openfreemap .maplibregl-ctrl-bottom-right {
+  right: 6px;
+  bottom: 4px;
+  z-index: 6;
+}
+
+/*
+  MapLibre writes position:absolute + transform:translate(...) on the marker root.
+  Never set position, transform, left, or top on .prensa-map-marker-anchor.
+  Visual styling (including any scale) belongs on the inner .prensa-map-marker.
+*/
+.prensa-map-marker-anchor {
+  width: max-content;
+  height: max-content;
 }
 
 .prensa-map-marker {
@@ -275,10 +372,10 @@
 }
 
 .prensa-map-pop .maplibregl-popup-content {
-  padding: 6px 8px;
-  border-radius: 4px;
-  border: 1px solid #e5e9ef;
-  box-shadow: none;
+  padding: 8px 10px;
+  border-radius: 12px;
+  border: 1px solid #e8ecf1;
+  box-shadow: 0 8px 24px -12px rgb(26 39 68 / 0.22);
   background: #fff;
 }
 
@@ -286,21 +383,108 @@
   border-top-color: #e5e9ef;
 }
 
-.prensa-map-pop .pop-title {
+.prensa-map-pop-card {
+  min-width: 124px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  border: 1px solid #e5e9ef;
+  background: #fff;
+}
+
+.prensa-map-google-pop {
+  pointer-events: none;
+}
+
+.prensa-google-map {
+  background: #e8eef3;
+}
+
+.prensa-map-pop .pop-title,
+.prensa-map-pop-card .pop-title {
   margin: 0;
   font-size: 12px;
   font-weight: 650;
   color: #0f172a;
 }
 
-.prensa-map-pop .pop-line {
+.prensa-map-pop .pop-line,
+.prensa-map-pop-card .pop-line {
   margin: 1px 0 0;
   font-size: 11px;
   color: #334155;
 }
 
-.prensa-map-pop .pop-muted {
+.prensa-map-pop .pop-muted,
+.prensa-map-pop-card .pop-muted {
   margin: 1px 0 0;
   font-size: 10.5px;
   color: #64748b;
+}
+
+.prensa-day-route-office-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  pointer-events: none;
+}
+
+.prensa-day-route-office {
+  display: flex;
+  width: 26px;
+  height: 26px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  background: #1a2744;
+  border: 2px solid #fff;
+  color: #fff;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  box-sizing: border-box;
+}
+
+.prensa-day-route-office-label {
+  max-width: 72px;
+  font-size: 8.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #475569;
+  text-align: center;
+  line-height: 1.15;
+  text-shadow: 0 0 3px #fff, 0 0 3px #fff;
+}
+
+.prensa-day-route-stop {
+  display: flex;
+  width: 24px;
+  height: 24px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: #1b7ab8;
+  border: 2px solid #fff;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+.prensa-day-route-stop.is-selected {
+  background: #15628f;
+  box-shadow: 0 0 0 5px rgb(27 122 184 / 0.22);
+}
+
+.prensa-day-route-candidate {
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: transparent;
+  border: 2px dashed #1b7ab8;
+  box-sizing: border-box;
+  cursor: pointer;
+  box-shadow: 0 0 0 3px rgb(255 255 255 / 0.85);
 }

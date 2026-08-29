@@ -109,6 +109,47 @@ describe("optimiseDay invariants", () => {
     }
   });
 
+  it("uses each job sampling duration instead of the global visit default", () => {
+    const { jobs, settings } = jobsOf("simple-corridor");
+    const first = { ...jobs[0], samplingDurationMinutes: 45, estimatedMinutes: 45 };
+    const rest = jobs.slice(1).map((job) => ({
+      ...job,
+      samplingDurationMinutes: 10,
+      estimatedMinutes: 10,
+    }));
+    const result = optimiseDay({
+      jobs: [first, ...rest],
+      settings: { ...settings, visitDurationMinutes: 20 },
+      preserveOrder: true,
+    });
+    const firstStop = result.stops[0];
+    assert.ok(firstStop?.suggestedArrival && firstStop.suggestedDeparture);
+    assert.equal(
+      timeToMinutes(firstStop.suggestedDeparture) - timeToMinutes(firstStop.suggestedArrival),
+      45
+    );
+  });
+
+  it("does not store a zero-minute leg when a stop has no coordinates", () => {
+    const { jobs, settings } = jobsOf("simple-corridor");
+    const unresolved: Job = {
+      ...jobs[0],
+      id: "unresolved-bay",
+      address: "cork st deception bay",
+      suburb: undefined,
+      latitude: undefined,
+      longitude: undefined,
+    };
+    const result = optimiseDay({
+      jobs: [jobs[0], unresolved],
+      settings,
+      preserveOrder: true,
+    });
+    const stop = result.stops.find((item) => item.jobId === "unresolved-bay");
+    assert.ok(stop);
+    assert.equal(stop.travelMinutesFromPrevious, undefined);
+  });
+
   it("flags an overloaded day rather than dropping jobs", () => {
     const { jobs, settings } = jobsOf("overloaded-day");
     const result = optimiseDay({ jobs, settings });

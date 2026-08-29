@@ -6,6 +6,7 @@ import { format } from "date-fns";
 import { Plus } from "lucide-react";
 import { useMemo } from "react";
 import { priorityLabel, safeDate } from "@/lib/format";
+import { jobHasResolvedLocation } from "@/lib/geo";
 import { getNearbyAlongRoute } from "@/lib/routing/nearby-along-route";
 import { useDayRouteStore } from "@/lib/store/day-route-store";
 import { cn } from "@/lib/utils";
@@ -34,7 +35,7 @@ export function NearbyJobsPanel() {
 
   return (
     <section className="panel">
-      <div className="flex items-center justify-between border-b border-hairline px-4 py-2.5">
+      <div className="panel-header flex items-center justify-between">
         <h2 className="panel-heading">Nearby opportunities</h2>
         <span className="text-[11px] text-slate-400 tabular-nums">
           {matches.length}
@@ -46,7 +47,7 @@ export function NearbyJobsPanel() {
           Every unbooked property is already on the route.
         </p>
       ) : (
-        <ul className="divide-y divide-hairline">
+        <ul className="space-y-2 p-3">
           {matches.map((match, index) => (
             <NearbyRow
               key={match.job.id}
@@ -54,6 +55,9 @@ export function NearbyJobsPanel() {
               suburb={match.job.suburb ?? "Unknown"}
               address={match.job.address}
               detour={match.detourMinutes}
+              sampling={match.samplingMinutes}
+              dayImpact={match.dayImpactMinutes}
+              resolved={jobHasResolvedLocation(match.job)}
               priority={priorityLabel(match.job.priority)}
               dueDate={match.job.dueDate}
               best={index === 0}
@@ -79,6 +83,9 @@ function NearbyRow({
   suburb,
   address,
   detour,
+  sampling,
+  dayImpact,
+  resolved,
   priority,
   dueDate,
   best,
@@ -89,7 +96,10 @@ function NearbyRow({
   jobId: string;
   suburb: string;
   address: string;
-  detour: number;
+  detour: number | null;
+  sampling: number;
+  dayImpact: number | null;
+  resolved: boolean;
   priority: string | null;
   dueDate?: string;
   best: boolean;
@@ -107,8 +117,8 @@ function NearbyRow({
       ref={setNodeRef}
       style={{ transform: CSS.Translate.toString(transform) }}
       className={cn(
-        "group relative flex cursor-grab gap-3 px-4 py-2.5 transition-colors duration-150 outline-none active:cursor-grabbing",
-        selected ? "bg-brand/[0.06]" : "hover:bg-slate-50",
+        "soft-card group relative flex cursor-grab gap-3 px-3.5 py-3 transition-shadow duration-150 outline-none active:cursor-grabbing",
+        selected ? "ring-2 ring-brand/30" : "hover:shadow-md",
         "focus-visible:ring-3 focus-visible:ring-brand/25",
         isDragging && "opacity-60"
       )}
@@ -132,7 +142,7 @@ function NearbyRow({
             {suburb}
           </span>
           {best ? (
-            <span className="shrink-0 rounded bg-prensa-green/15 px-1 py-px text-[9px] font-semibold tracking-[0.06em] text-prensa-green-ink uppercase">
+            <span className="shrink-0 rounded-full bg-prensa-green/15 px-2 py-0.5 text-[9.5px] font-semibold tracking-[0.06em] text-prensa-green-ink uppercase">
               Best fit
             </span>
           ) : null}
@@ -146,15 +156,27 @@ function NearbyRow({
       </div>
 
       <div className="flex shrink-0 flex-col items-end gap-1">
-        <span
-          className={cn(
-            "text-[15px] leading-none font-semibold tabular-nums",
-            best ? "text-prensa-green-ink" : "text-slate-800"
-          )}
-        >
-          +{Math.max(0, detour)} min
-        </span>
-        <span className="text-[10.5px] text-slate-400">detour</span>
+        {detour != null && resolved ? (
+          <>
+            <span
+              className={cn(
+                "text-[15px] leading-none font-semibold tabular-nums",
+                best ? "text-prensa-green-ink" : "text-slate-800"
+              )}
+            >
+              +{Math.max(0, dayImpact ?? detour + sampling)} min
+            </span>
+            <span className="max-w-[92px] text-right text-[10.5px] leading-4 text-slate-400">
+              +{Math.max(0, detour)} min driving
+              <br />
+              +{sampling} min on site
+            </span>
+          </>
+        ) : (
+          <span className="max-w-[88px] text-right text-[10.5px] leading-4 text-amber-700">
+            Location required
+          </span>
+        )}
         <button
           type="button"
           aria-label={`Add ${suburb} to route`}
@@ -162,7 +184,7 @@ function NearbyRow({
             event.stopPropagation();
             onAdd();
           }}
-          className="mt-0.5 flex h-6 items-center gap-1 rounded-md border border-hairline bg-white px-1.5 text-[11px] font-medium text-slate-500 transition-colors hover:border-brand hover:text-brand focus-visible:ring-3 focus-visible:ring-brand/25 focus-visible:outline-none"
+          className="mt-0.5 flex h-7 items-center gap-1 rounded-lg border border-hairline bg-white px-2 text-[11.5px] font-medium text-slate-600 transition-colors hover:border-brand hover:text-brand focus-visible:ring-3 focus-visible:ring-brand/25 focus-visible:outline-none"
         >
           <Plus className="size-3" />
           Add

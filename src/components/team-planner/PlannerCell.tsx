@@ -18,16 +18,22 @@ export function PlannerCell({
   allocations,
   jobs,
   onCategoryMenu,
+  compact = false,
+  weekBreak = false,
 }: {
   consultant: Consultant;
   date: string;
   allocations: Allocation[];
   jobs: Record<string, Job>;
   onCategoryMenu: (jobId: string, position: { x: number; y: number }) => void;
+  compact?: boolean;
+  weekBreak?: boolean;
 }) {
-  const selectedJobId = useTeamPlannerStore((state) => state.selectedJobId);
-  const editingCell = useTeamPlannerStore((state) => state.editingCell);
+  const editing = useTeamPlannerStore(
+    (state) => state.editingCell?.consultantId === consultant.id && state.editingCell.date === date
+  );
   const selectJob = useTeamPlannerStore((state) => state.selectJob);
+  const selectDate = useTeamPlannerStore((state) => state.selectDate);
   const setEditingCell = useTeamPlannerStore((state) => state.setEditingCell);
   const quickAdd = useTeamPlannerStore((state) => state.quickAdd);
   const { setNodeRef, isOver } = useDroppable({
@@ -35,8 +41,6 @@ export function PlannerCell({
     data: { type: "cell", consultantId: consultant.id, date },
   });
 
-  const editing =
-    editingCell?.consultantId === consultant.id && editingCell.date === date;
   const conflict = cellHasConflict(allocations, jobs);
   const minutes = allocations.reduce(
     (sum, item) => sum + (jobs[item.jobId]?.estimatedMinutes ?? 0),
@@ -47,10 +51,13 @@ export function PlannerCell({
     <div
       ref={setNodeRef}
       className={cn(
-        "group/cell flex min-h-[88px] flex-col gap-1 border-r border-b border-hairline p-1.5 last:border-r-0",
+        "group/cell flex flex-col border-r border-b border-slate-200/80 last:border-r-0",
+        compact ? "min-h-[52px] gap-1 p-1" : "min-h-[92px] gap-1.5 p-2",
+        weekBreak && "prensa-planner-week-break",
         isOver && "bg-brand/[0.06]"
       )}
       onClick={() => {
+        selectDate(date);
         if (!editing) setEditingCell({ consultantId: consultant.id, date });
       }}
       onKeyDown={(event) => {
@@ -59,10 +66,11 @@ export function PlannerCell({
         }
       }}
       data-cell={`${consultant.id}:${date}`}
+      data-editing={editing ? "true" : undefined}
       role="gridcell"
       tabIndex={0}
     >
-      {allocations.length > 0 ? (
+      {!compact && allocations.length > 0 ? (
         <p className="px-0.5 text-[10px] text-slate-400 tabular-nums">
           {allocations.length} {allocations.length === 1 ? "job" : "jobs"}
           {minutes > 0 ? ` · ${formatHours(minutes)}` : ""}
@@ -74,7 +82,7 @@ export function PlannerCell({
         items={allocations.map((item) => `alloc:${item.id}`)}
         strategy={verticalListSortingStrategy}
       >
-        <div className="flex flex-col gap-1">
+        <div className={cn("flex flex-col", compact ? "gap-1" : "gap-1.5")}>
           {allocations.map((allocation) => {
             const job = jobs[allocation.jobId];
             if (!job) return null;
@@ -83,7 +91,7 @@ export function PlannerCell({
                 key={allocation.id}
                 job={job}
                 allocation={allocation}
-                selected={selectedJobId === job.id}
+                compact={compact}
                 conflict={allocations.some((other) =>
                   allocationsOverlap(allocation, other, jobs)
                 )}
@@ -104,9 +112,26 @@ export function PlannerCell({
           onCancel={() => setEditingCell(null)}
         />
       ) : (
-        <span className="mt-auto px-0.5 text-[11px] text-slate-400 opacity-0 transition-opacity group-hover/cell:opacity-100 group-focus-within/cell:opacity-100">
-          + Add job
-        </span>
+        <button
+          type="button"
+          data-testid="quick-add-trigger"
+          className={cn(
+            "mt-auto w-full rounded-sm px-0.5 text-left text-slate-400 transition-opacity",
+            "opacity-45 hover:opacity-100 group-hover/cell:opacity-100 group-focus-within/cell:opacity-100",
+            compact ? "min-h-[16px] rounded-md text-[10px]" : "rounded-md text-[11px]"
+          )}
+          onMouseDown={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+          }}
+          onClick={(event) => {
+            event.stopPropagation();
+            selectDate(date);
+            setEditingCell({ consultantId: consultant.id, date });
+          }}
+        >
+          + Add
+        </button>
       )}
     </div>
   );
@@ -144,6 +169,8 @@ function QuickEntry({
         }
       }}
       onBlur={(event) => {
+        // relatedTarget is null on unmount / React Strict Mode remount — do not cancel.
+        if (!event.relatedTarget) return;
         if (!event.currentTarget.value.trim()) onCancel();
       }}
     />

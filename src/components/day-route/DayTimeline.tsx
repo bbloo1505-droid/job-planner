@@ -32,9 +32,10 @@ export function DayTimeline() {
   const lastStop = stops[stops.length - 1];
   const lastJob = lastStop ? jobs[lastStop.jobId] : undefined;
   const returnMinutes = returnLegMinutes(settings, lastJob);
-  const returnTime = lastStop?.suggestedDeparture
-    ? addMinutes(lastStop.suggestedDeparture, returnMinutes)
-    : null;
+  const returnTime =
+    lastStop?.suggestedDeparture && returnMinutes != null
+      ? addMinutes(lastStop.suggestedDeparture, returnMinutes)
+      : null;
 
   const dayEnd = settings.workingHoursEnd;
   const spareMinutes = minutesBeforeWorkingDayEnd(settings, stops, jobs);
@@ -47,7 +48,7 @@ export function DayTimeline() {
         isOver && "ring-3 ring-brand/30"
       )}
     >
-      <div className="flex items-center justify-between border-b border-hairline px-4 py-2.5">
+      <div className="panel-header flex items-center justify-between">
         <h2 className="panel-heading">Route</h2>
         {stops.length > 1 ? (
           <span className="text-[11px] text-slate-400">Drag to reorder</span>
@@ -77,7 +78,7 @@ export function DayTimeline() {
             if (!job) return null;
             return (
               <div key={stop.id}>
-                <TravelSegment minutes={stop.travelMinutesFromPrevious ?? 0} />
+                <TravelSegment minutes={stop.travelMinutesFromPrevious} />
                 <TimelineStop
                   stop={stop}
                   job={job}

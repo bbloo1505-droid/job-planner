@@ -3,6 +3,16 @@ import { geocodeAddress } from "@/lib/geo";
 import { addMinutes } from "@/lib/routing/round-time";
 import { createTeamDemo } from "@/lib/team/dummy-data";
 import { parseQuickEntry } from "@/lib/team/parse-quick-entry";
+import {
+  DEMO_MONTH_START,
+  dateInMonth,
+  monthStartIso,
+  monthWorkingIsoDates,
+  nearestVisibleDate,
+  scrollAnchorForMonth,
+  shiftMonth,
+  type BoardView,
+} from "@/lib/team/month";
 import { DEMO_WEEK_MONDAY, mondayIso, shiftWeek } from "@/lib/team/week";
 import type {
   Allocation,
@@ -14,7 +24,14 @@ import type {
 const MAX_UNDO = 40;
 
 export type TeamView = "planner" | "map" | "split";
-export type GeoScope = string | "week";
+export type GeoScope = string | "week" | "month";
+export type { BoardView };
+export type FocusTarget = {
+  nonce: number;
+  date: string;
+  consultantId?: string;
+  jobId?: string;
+};
 
 interface Snapshot {
   jobs: Record<string, Job>;
@@ -24,6 +41,10 @@ interface Snapshot {
 export interface TeamPlannerState extends Snapshot {
   consultants: Consultant[];
   weekStart: string;
+  monthStart: string;
+  boardView: BoardView;
+  showWeekends: boolean;
+  focusTarget: FocusTarget | null;
   selectedJobId: string | null;
   selectedDate: string | null;
   selectedConsultantId: string | null;
@@ -61,7 +82,12 @@ export interface TeamPlannerState extends Snapshot {
   setDueThisWeekOnly: (value: boolean) => void;
   setConsultantFilter: (value: string | "all") => void;
   setEditingCell: (cell: { consultantId: string; date: string } | null) => void;
+  setBoardView: (view: BoardView) => void;
+  setShowWeekends: (value: boolean) => void;
+  requestFocus: (target: Omit<FocusTarget, "nonce">) => void;
+  revealDate: (date: string, extra?: { consultantId?: string; jobId?: string }) => void;
   goWeek: (delta: number) => void;
+  goMonth: (delta: number) => void;
   goToday: () => void;
   undo: () => void;
 }
@@ -106,17 +132,22 @@ function reindex(items: Allocation[]): Allocation[] {
 }
 
 const demo = createTeamDemo();
+const INITIAL_VISIBLE_DATE = scrollAnchorForMonth(DEMO_MONTH_START, false);
 
 export const useTeamPlannerStore = create<TeamPlannerState>((set, get) => ({
   consultants: demo.consultants,
   jobs: demo.jobs,
   allocations: demo.allocations,
   weekStart: DEMO_WEEK_MONDAY,
+  monthStart: DEMO_MONTH_START,
+  boardView: "month",
+  showWeekends: false,
+  focusTarget: null,
   selectedJobId: null,
-  selectedDate: DEMO_WEEK_MONDAY,
+  selectedDate: INITIAL_VISIBLE_DATE,
   selectedConsultantId: null,
   view: "planner",
-  geoScope: DEMO_WEEK_MONDAY,
+  geoScope: INITIAL_VISIBLE_DATE,
   mapHiddenConsultantIds: [],
   allocationPreview: null,
   search: "",
@@ -324,16 +355,25 @@ export const useTeamPlannerStore = create<TeamPlannerState>((set, get) => ({
   },
 
   selectJob: (jobId) =>
-    set((state) => ({
-      selectedJobId: jobId,
-      allocationPreview:
-        jobId && state.allocationPreview?.jobId === jobId ? state.allocationPreview : null,
-    })),
-  selectDate: (date) =>
-    set({
-      selectedDate: date,
-      geoScope: date ?? "week",
+    set((state) => {
+      const allocation = jobId
+        ? state.allocations.find((item) => item.jobId === jobId)
+        : undefined;
+      return {
+        selectedJobId: jobId,
+        selectedDate: allocation?.scheduledDate ?? state.selectedDate,
+        weekStart: allocation ? mondayIso(allocation.scheduledDate) : state.weekStart,
+        geoScope: allocation?.scheduledDate ?? state.geoScope,
+        allocationPreview:
+          jobId && state.allocationPreview?.jobId === jobId ? state.allocationPreview : null,
+      };
     }),
+  selectDate: (date) =>
+    set((state) => ({
+      selectedDate: date,
+      geoScope: date ?? state.geoScope,
+      weekStart: date ? mondayIso(date) : state.weekStart,
+    })),
   selectConsultant: (consultantId) =>
     set((state) => ({
       selectedConsultantId:
@@ -343,7 +383,10 @@ export const useTeamPlannerStore = create<TeamPlannerState>((set, get) => ({
   setGeoScope: (geoScope) =>
     set((state) => ({
       geoScope,
-      selectedDate: geoScope === "week" ? state.selectedDate : geoScope,
+      selectedDate:
+        geoScope === "week" || geoScope === "month" ? state.selectedDate : geoScope,
+      weekStart:
+        geoScope !== "week" && geoScope !== "month" ? mondayIso(geoScope) : state.weekStart,
     })),
   toggleMapConsultantHidden: (consultantId) =>
     set((state) => {
@@ -374,22 +417,84 @@ export const useTeamPlannerStore = create<TeamPlannerState>((set, get) => ({
   setDueThisWeekOnly: (dueThisWeekOnly) => set({ dueThisWeekOnly }),
   setConsultantFilter: (consultantFilter) => set({ consultantFilter }),
   setEditingCell: (editingCell) => set({ editingCell }),
+  setBoardView: (boardView) =>
+    set((state) => ({
+      boardView,
+      weekStart:
+        boardView === "week" && state.selectedDate
+          ? mondayIso(state.selectedDate)
+          : state.weekStart,
+    })),
+  setShowWeekends: (showWeekends) => set({ showWeekends }),
+  requestFocus: (target) =>
+    set({
+      focusTarget: { ...target, nonce: Date.now() },
+    }),
+  revealDate: (date, extra) =>
+    set((state) => ({
+      monthStart: monthStartIso(date),
+      weekStart: mondayIso(date),
+      selectedDate: date,
+      geoScope: date,
+      selectedJobId: extra?.jobId ?? state.selectedJobId,
+      selectedConsultantId: extra?.consultantId ?? state.selectedConsultantId,
+      focusTarget: {
+        nonce: Date.now(),
+        date,
+        consultantId: extra?.consultantId,
+        jobId: extra?.jobId,
+      },
+    })),
   goWeek: (delta) =>
     set((state) => {
       const weekStart = shiftWeek(state.weekStart, delta);
       return {
         weekStart,
+        monthStart: monthStartIso(weekStart),
         selectedDate: weekStart,
         geoScope: weekStart,
         editingCell: null,
       };
     }),
+  goMonth: (delta) =>
+    set((state) => {
+      const monthStart = shiftMonth(state.monthStart, delta);
+      const visible = monthWorkingIsoDates(monthStart, state.showWeekends);
+      const selectedStays =
+        state.selectedDate && dateInMonth(state.selectedDate, monthStart)
+          ? state.selectedDate
+          : null;
+      const allocation = state.selectedJobId
+        ? state.allocations.find((item) => item.jobId === state.selectedJobId)
+        : undefined;
+      const jobStays =
+        !allocation || dateInMonth(allocation.scheduledDate, monthStart);
+      const selectedDate = selectedStays ?? visible[0] ?? null;
+      return {
+        monthStart,
+        weekStart: selectedDate ? mondayIso(selectedDate) : mondayIso(monthStart),
+        selectedDate,
+        selectedJobId: jobStays ? state.selectedJobId : null,
+        geoScope: selectedDate ?? "month",
+        editingCell: null,
+        focusTarget: selectedDate ? { nonce: Date.now(), date: selectedDate } : state.focusTarget,
+      };
+    }),
   goToday: () =>
-    set({
-      weekStart: mondayIso(new Date()),
-      selectedDate: mondayIso(new Date()),
-      geoScope: mondayIso(new Date()),
-      editingCell: null,
+    set((state) => {
+      const today = new Date();
+      const monthStart = monthStartIso(today);
+      const visible = monthWorkingIsoDates(monthStart, state.showWeekends);
+      const todayIso = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+      const anchor = nearestVisibleDate(todayIso, visible) ?? visible[0] ?? todayIso;
+      return {
+        monthStart,
+        weekStart: mondayIso(today),
+        selectedDate: todayIso,
+        geoScope: anchor,
+        editingCell: null,
+        focusTarget: { nonce: Date.now(), date: anchor },
+      };
     }),
   undo: () => {
     set((state) => {
@@ -421,11 +526,15 @@ export function resetTeamPlannerStore(): void {
     jobs: fresh.jobs,
     allocations: fresh.allocations,
     weekStart: DEMO_WEEK_MONDAY,
+    monthStart: DEMO_MONTH_START,
+    boardView: "month",
+    showWeekends: false,
+    focusTarget: null,
     selectedJobId: null,
-    selectedDate: DEMO_WEEK_MONDAY,
+    selectedDate: INITIAL_VISIBLE_DATE,
     selectedConsultantId: null,
     view: "planner",
-    geoScope: DEMO_WEEK_MONDAY,
+    geoScope: INITIAL_VISIBLE_DATE,
     mapHiddenConsultantIds: [],
     allocationPreview: null,
     search: "",

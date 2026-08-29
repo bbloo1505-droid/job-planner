@@ -10,13 +10,14 @@ import {
   useSensors,
   type CollisionDetection,
   type DragEndEvent,
+  type DragMoveEvent,
   type DragStartEvent,
 } from "@dnd-kit/core";
 import { ChevronLeft, ChevronRight, Undo2 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { JobEditor } from "@/components/team-planner/JobEditor";
 import { MatchPanel } from "@/components/team-planner/MatchPanel";
-import { PlannerCell } from "@/components/team-planner/PlannerCell";
+import { PlanningBoard } from "@/components/team-planner/PlanningBoard";
 import { ScheduledJobPanel } from "@/components/team-planner/ScheduledJobPanel";
 import { TeamMap } from "@/components/team-planner/TeamMap";
 import { UnassignedPanel, matchesLite } from "@/components/team-planner/UnassignedPanel";
@@ -25,9 +26,10 @@ import { WorkCategoryMenu } from "@/components/team-planner/WorkCategoryMenu";
 import { Button } from "@/components/ui/button";
 import { AppShell } from "@/components/layout/AppShell";
 import { allocationForJob, useTeamPlannerStore } from "@/lib/store/team-planner-store";
+import { monthDays, monthLabel } from "@/lib/team/month";
 import { workCategoryMeta } from "@/lib/team/work-category";
-import { columnLabel, isoDate, weekDays, weekRangeLabel } from "@/lib/team/week";
-import type { WorkCategory } from "@/lib/types";
+import { weekDays, weekRangeLabel } from "@/lib/team/week";
+import type { Allocation, WorkCategory } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 const preferPointer: CollisionDetection = (args) => {
@@ -40,9 +42,11 @@ export function TeamPlannerApp() {
   const jobs = useTeamPlannerStore((state) => state.jobs);
   const allocations = useTeamPlannerStore((state) => state.allocations);
   const weekStart = useTeamPlannerStore((state) => state.weekStart);
-  const selectedDate = useTeamPlannerStore((state) => state.selectedDate);
-  const selectedConsultantId = useTeamPlannerStore((state) => state.selectedConsultantId);
+  const monthStart = useTeamPlannerStore((state) => state.monthStart);
+  const boardView = useTeamPlannerStore((state) => state.boardView);
+  const showWeekends = useTeamPlannerStore((state) => state.showWeekends);
   const selectedJobId = useTeamPlannerStore((state) => state.selectedJobId);
+  const selectedDate = useTeamPlannerStore((state) => state.selectedDate);
   const view = useTeamPlannerStore((state) => state.view);
   const search = useTeamPlannerStore((state) => state.search);
   const priorityFilter = useTeamPlannerStore((state) => state.priorityFilter);
@@ -54,7 +58,6 @@ export function TeamPlannerApp() {
   const unassign = useTeamPlannerStore((state) => state.unassign);
   const reorderInCell = useTeamPlannerStore((state) => state.reorderInCell);
   const selectDate = useTeamPlannerStore((state) => state.selectDate);
-  const selectConsultant = useTeamPlannerStore((state) => state.selectConsultant);
   const selectJob = useTeamPlannerStore((state) => state.selectJob);
   const setView = useTeamPlannerStore((state) => state.setView);
   const setSearch = useTeamPlannerStore((state) => state.setSearch);
@@ -63,10 +66,16 @@ export function TeamPlannerApp() {
   const setConsultantFilter = useTeamPlannerStore((state) => state.setConsultantFilter);
   const setEditingCell = useTeamPlannerStore((state) => state.setEditingCell);
   const goWeek = useTeamPlannerStore((state) => state.goWeek);
+  const goMonth = useTeamPlannerStore((state) => state.goMonth);
   const goToday = useTeamPlannerStore((state) => state.goToday);
+  const setBoardView = useTeamPlannerStore((state) => state.setBoardView);
+  const setShowWeekends = useTeamPlannerStore((state) => state.setShowWeekends);
+  const revealDate = useTeamPlannerStore((state) => state.revealDate);
+  const setGeoScope = useTeamPlannerStore((state) => state.setGeoScope);
   const undo = useTeamPlannerStore((state) => state.undo);
   const updateJob = useTeamPlannerStore((state) => state.updateJob);
 
+  const rootRef = useRef<HTMLDivElement>(null);
   const [activeJobId, setActiveJobId] = useState<string | null>(null);
   const [categoryMenu, setCategoryMenu] = useState<{
     jobId: string;
@@ -76,7 +85,10 @@ export function TeamPlannerApp() {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } })
   );
-  const days = useMemo(() => weekDays(weekStart), [weekStart]);
+  const days = useMemo(
+    () => (boardView === "month" ? monthDays(monthStart, showWeekends) : weekDays(weekStart)),
+    [boardView, monthStart, showWeekends, weekStart]
+  );
   const selectedIsUnassigned = Boolean(
     selectedJobId && !allocationForJob({ allocations }, selectedJobId)
   );
@@ -90,6 +102,10 @@ export function TeamPlannerApp() {
     selectJob(null);
     setCategoryMenu(null);
   }, [selectJob, setEditingCell]);
+
+  useEffect(() => {
+    rootRef.current?.setAttribute("data-planner-ready", "true");
+  }, []);
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
@@ -120,10 +136,44 @@ export function TeamPlannerApp() {
     (item) => consultantFilter === "all" || item.id === consultantFilter
   );
 
+  const allocationsByCell = useMemo(
+    () => indexAllocations(allocations, jobs, search, priorityFilter, dueThisWeekOnly, weekStart),
+    [allocations, dueThisWeekOnly, jobs, priorityFilter, search, weekStart]
+  );
+
+  useEffect(() => {
+    const q = search.trim().toLowerCase();
+    if (q.length < 3) return;
+    const hits = allocations.filter((item) => {
+      const job = jobs[item.jobId];
+      if (!job) return false;
+      const hay = `${job.jobNumber ?? ""} ${job.suburb ?? ""} ${job.address} ${job.title ?? ""}`.toLowerCase();
+      return hay.includes(q);
+    });
+    if (hits.length !== 1) return;
+    const hit = hits[0];
+    revealDate(hit.scheduledDate, {
+      consultantId: hit.consultantId,
+      jobId: hit.jobId,
+    });
+  }, [allocations, jobs, revealDate, search]);
+
   function onDragStart(event: DragStartEvent) {
     const jobId = event.active.data.current?.jobId as string | undefined;
     setActiveJobId(jobId ?? null);
     setCategoryMenu(null);
+  }
+
+  function onDragMove(event: DragMoveEvent) {
+    const board = document.querySelector<HTMLElement>("[data-testid='planning-board']");
+    const translated = event.active.rect.current.translated;
+    if (!board || !translated) return;
+    const rect = board.getBoundingClientRect();
+    const edge = 64;
+    if (translated.left < rect.left + edge) board.scrollLeft -= 22;
+    if (translated.right > rect.right - edge) board.scrollLeft += 22;
+    if (translated.top < rect.top + edge) board.scrollTop -= 16;
+    if (translated.bottom > rect.bottom - edge) board.scrollTop += 16;
   }
 
   function onDragEnd(event: DragEndEvent) {
@@ -162,6 +212,14 @@ export function TeamPlannerApp() {
     if (activeData?.type === "allocation" && activeData.allocationId) {
       const sameCell =
         activeData.consultantId === cell.consultantId && activeData.date === cell.date;
+      const movingJob = activeData.jobId ? jobs[activeData.jobId] : undefined;
+      if (
+        !sameCell &&
+        movingJob?.workCategory === "management_locked" &&
+        !window.confirm("Do not move without Management Approval. Move this job anyway?")
+      ) {
+        return;
+      }
       if (sameCell && overData?.type === "allocation" && overData.allocationId) {
         const cellItems = allocations
           .filter(
@@ -184,18 +242,29 @@ export function TeamPlannerApp() {
         id="team-planner"
         sensors={sensors}
         collisionDetection={preferPointer}
+        autoScroll={{ threshold: { x: 0.14, y: 0.14 }, acceleration: 12 }}
         onDragStart={onDragStart}
+        onDragMove={onDragMove}
         onDragEnd={onDragEnd}
         onDragCancel={() => setActiveJobId(null)}
       >
-        <div className="flex h-full min-h-0 flex-col bg-canvas">
-          <header className="shrink-0 border-b border-hairline bg-white px-4 py-2.5">
+        <div
+          ref={rootRef}
+          className="flex h-full min-h-0 flex-col bg-canvas"
+          data-testid="team-planner-app"
+          data-planner-ready="false"
+          data-selected-date={selectedDate ?? ""}
+        >
+          <header className="shrink-0 border-b border-slate-200/70 bg-white px-5 py-3.5">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="flex min-w-0 items-center gap-3">
                 <div>
                   <p className="eyebrow">Team Planner</p>
-                  <h1 className="text-[18px] leading-tight font-semibold tracking-tight text-slate-900">
-                    {weekRangeLabel(weekStart)}
+                  <h1
+                    className="text-[18px] leading-tight font-semibold tracking-tight text-slate-900"
+                    data-testid="planner-period-label"
+                  >
+                    {boardView === "month" ? monthLabel(monthStart) : weekRangeLabel(weekStart)}
                   </h1>
                 </div>
                 <div className="flex items-center gap-1">
@@ -203,8 +272,8 @@ export function TeamPlannerApp() {
                     type="button"
                     variant="outline"
                     size="icon-sm"
-                    aria-label="Previous week"
-                    onClick={() => goWeek(-1)}
+                    aria-label={boardView === "month" ? "Previous month" : "Previous week"}
+                    onClick={() => (boardView === "month" ? goMonth(-1) : goWeek(-1))}
                   >
                     <ChevronLeft />
                   </Button>
@@ -212,14 +281,38 @@ export function TeamPlannerApp() {
                     type="button"
                     variant="outline"
                     size="icon-sm"
-                    aria-label="Next week"
-                    onClick={() => goWeek(1)}
+                    aria-label={boardView === "month" ? "Next month" : "Next week"}
+                    onClick={() => (boardView === "month" ? goMonth(1) : goWeek(1))}
                   >
                     <ChevronRight />
                   </Button>
-                  <Button type="button" variant="outline" size="sm" onClick={goToday}>
+                  <Button type="button" variant="outline" size="sm" data-testid="planner-today" onClick={goToday}>
                     Today
                   </Button>
+                </div>
+                <div className="flex rounded-md border border-hairline p-0.5" data-testid="board-view-switch">
+                  <button
+                    type="button"
+                    data-board-option="month"
+                    onClick={() => setBoardView("month")}
+                    className={cn(
+                      "h-7 rounded px-2.5 text-[12px] font-medium",
+                      boardView === "month" ? "bg-navy text-white" : "text-slate-600 hover:bg-slate-50"
+                    )}
+                  >
+                    Month
+                  </button>
+                  <button
+                    type="button"
+                    data-board-option="week"
+                    onClick={() => setBoardView("week")}
+                    className={cn(
+                      "h-7 rounded px-2.5 text-[12px] font-medium",
+                      boardView === "week" ? "bg-navy text-white" : "text-slate-600 hover:bg-slate-50"
+                    )}
+                  >
+                    Week
+                  </button>
                 </div>
               </div>
               <div className="flex flex-wrap items-center gap-2">
@@ -276,6 +369,8 @@ export function TeamPlannerApp() {
               <input
                 className="field-input h-7 max-w-[220px]"
                 placeholder="Search location or job no."
+                aria-label="Search jobs"
+                data-testid="planner-search"
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
               />
@@ -312,6 +407,16 @@ export function TeamPlannerApp() {
                 />
                 Due this week
               </label>
+              {boardView === "month" ? (
+                <label className="flex items-center gap-1.5 text-[12px] text-slate-600">
+                  <input
+                    type="checkbox"
+                    checked={showWeekends}
+                    onChange={(event) => setShowWeekends(event.target.checked)}
+                  />
+                  Show weekends
+                </label>
+              ) : null}
             </div>
             ) : null}
           </header>
@@ -320,73 +425,30 @@ export function TeamPlannerApp() {
             <div className="flex min-h-0 min-w-0 flex-1 flex-col">
               <div
                 className={cn(
-                  "min-h-0 overflow-auto",
-                  view === "map" ? "hidden" : "flex-1"
+                  "min-h-0 overflow-hidden",
+                  view === "map" ? "hidden" : "flex min-h-0 flex-1 flex-col"
                 )}
               >
-                <div
-                  className="grid min-w-0"
-                  style={{
-                    gridTemplateColumns: "minmax(148px,168px) repeat(5, minmax(0, 1fr))",
+                <PlanningBoard
+                  consultants={visibleConsultants}
+                  days={days}
+                  jobs={jobs}
+                  allocationsByCell={allocationsByCell}
+                  compact={boardView === "month"}
+                  onCategoryMenu={openCategoryMenu}
+                  onDateSelect={selectDate}
+                  onWeekSelect={(date) => {
+                    selectDate(date);
+                    setGeoScope("week");
                   }}
-                  role="grid"
-                  aria-label="Weekly allocation board"
-                >
-                  <div className="sticky top-0 z-10 border-r border-b border-hairline bg-slate-50 px-3 py-2 text-[11px] font-medium text-slate-500">
-                    Consultant
-                  </div>
-                  {days.map((day) => {
-                    const iso = isoDate(day);
-                    const label = columnLabel(day);
-                    const active = selectedDate === iso;
-                    return (
-                      <button
-                        key={iso}
-                        type="button"
-                        onClick={() => selectDate(iso)}
-                        className={cn(
-                          "sticky top-0 z-10 border-r border-b border-hairline bg-slate-50 px-2 py-2 text-left last:border-r-0",
-                          active && "bg-brand/[0.08]"
-                        )}
-                      >
-                        <span className="block text-[10px] font-semibold tracking-[0.08em] text-slate-400">
-                          {label.day}
-                        </span>
-                        <span className="block text-[12px] font-semibold text-slate-800">
-                          {label.date}
-                        </span>
-                      </button>
-                    );
-                  })}
-
-                  {visibleConsultants.map((consultant) => (
-                    <ConsultantRow
-                      key={consultant.id}
-                      consultantId={consultant.id}
-                      selected={selectedConsultantId === consultant.id}
-                      onSelect={() => selectConsultant(consultant.id)}
-                      onCategoryMenu={openCategoryMenu}
-                      days={days.map(isoDate)}
-                      jobs={jobs}
-                      allocations={allocations.filter((item) => {
-                        const job = jobs[item.jobId];
-                        if (!job) return false;
-                        return matchesLite(
-                          job,
-                          search,
-                          priorityFilter,
-                          dueThisWeekOnly,
-                          weekStart
-                        );
-                      })}
-                    />
-                  ))}
-                </div>
+                />
               </div>
               {view === "split" || view === "map" ? (
                 <div
                   className={
-                    view === "map" ? "min-h-0 flex-1" : "min-h-[280px] flex-1 border-t border-hairline"
+                    view === "map"
+                      ? "min-h-0 flex-1"
+                      : "min-h-[280px] flex-[0.9] border-t border-hairline"
                   }
                 >
                   <TeamMap variant={view === "map" ? "full" : "split"} />
@@ -458,65 +520,29 @@ export function TeamPlannerApp() {
   );
 }
 
-function ConsultantRow({
-  consultantId,
-  selected,
-  onSelect,
-  onCategoryMenu,
-  days,
-  jobs,
-  allocations,
-}: {
-  consultantId: string;
-  selected: boolean;
-  onSelect: () => void;
-  onCategoryMenu: (jobId: string, position: { x: number; y: number }) => void;
-  days: string[];
-  jobs: ReturnType<typeof useTeamPlannerStore.getState>["jobs"];
-  allocations: ReturnType<typeof useTeamPlannerStore.getState>["allocations"];
-}) {
-  const consultant = useTeamPlannerStore((state) =>
-    state.consultants.find((item) => item.id === consultantId)
-  );
-  if (!consultant) return null;
-
-  return (
-    <>
-      <button
-        type="button"
-        onClick={onSelect}
-        className={cn(
-          "border-r border-b border-hairline bg-white px-3 py-2 text-left",
-          selected && "bg-brand/[0.06]"
-        )}
-      >
-        <span className="flex items-center gap-2">
-          <span
-            className="size-2 shrink-0 rounded-full"
-            style={{ backgroundColor: consultant.displayColour }}
-          />
-          <span className="truncate text-[13px] font-medium text-slate-900">
-            {consultant.name}
-          </span>
-        </span>
-        <span className="mt-0.5 block text-[10.5px] text-slate-400">
-          {consultant.initials} · {consultant.baseOffice?.replace(" (demo)", "")}
-        </span>
-      </button>
-      {days.map((date) => (
-        <PlannerCell
-          key={`${consultant.id}-${date}`}
-          consultant={consultant}
-          date={date}
-          jobs={jobs}
-          onCategoryMenu={onCategoryMenu}
-          allocations={allocations.filter(
-            (item) => item.consultantId === consultant.id && item.scheduledDate === date
-          )}
-        />
-      ))}
-    </>
-  );
+function indexAllocations(
+  allocations: Allocation[],
+  jobs: ReturnType<typeof useTeamPlannerStore.getState>["jobs"],
+  search: string,
+  priorityFilter: string,
+  dueThisWeekOnly: boolean,
+  weekStart: string
+): Map<string, Allocation[]> {
+  const map = new Map<string, Allocation[]>();
+  for (const item of allocations) {
+    const job = jobs[item.jobId];
+    if (!job || !matchesLite(job, search, priorityFilter, dueThisWeekOnly, weekStart)) continue;
+    const key = `${item.consultantId}:${item.scheduledDate}`;
+    const list = map.get(key);
+    if (list) list.push(item);
+    else map.set(key, [item]);
+  }
+  for (const list of map.values()) {
+    list.sort(
+      (a, b) => (a.order ?? 0) - (b.order ?? 0) || (a.startTime ?? "").localeCompare(b.startTime ?? "")
+    );
+  }
+  return map;
 }
 
 function DragCard({ jobId }: { jobId: string }) {
@@ -525,7 +551,7 @@ function DragCard({ jobId }: { jobId: string }) {
   const category = workCategoryMeta(job.workCategory);
   return (
     <div
-      className="rounded-[2px] px-2 py-1 text-[12px] font-semibold shadow-sm"
+      className="rounded-lg px-2.5 py-1.5 text-[12px] font-semibold shadow-md"
       style={{
         backgroundColor: category.fill,
         color: category.text,

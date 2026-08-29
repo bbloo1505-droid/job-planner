@@ -6,7 +6,9 @@ import { AlertTriangle, GripVertical, Lock } from "lucide-react";
 import { BookingStatusText } from "@/components/day-route/BookingStatusBadge";
 import { TIMELINE_GRID } from "@/components/day-route/timeline-grid";
 import { constraintLabel } from "@/lib/format";
+import { jobHasResolvedLocation } from "@/lib/geo";
 import { formatDisplayTime } from "@/lib/routing/round-time";
+import { samplingDurationOf } from "@/lib/routing/sampling";
 import { useDayRouteStore } from "@/lib/store/day-route-store";
 import type { Job, RouteStop } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -22,15 +24,17 @@ export function TimelineStop({
   selected: boolean;
   onSelect: () => void;
 }) {
-  const duration = useDayRouteStore(
+  const visitDefault = useDayRouteStore(
     (state) => state.plan.settings.visitDurationMinutes
   );
+  const duration = samplingDurationOf(job, { visitDurationMinutes: visitDefault });
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: stop.id });
 
   const isAnchored = job.constraint.type !== "flexible";
   const blocking = stop.conflict?.code === "exceeds_working_day";
   const conflict = Boolean(stop.conflict);
+  const resolved = jobHasResolvedLocation(job);
 
   return (
     <div
@@ -48,7 +52,7 @@ export function TimelineStop({
       }}
       className={cn(
         TIMELINE_GRID,
-        "group relative cursor-pointer items-stretch rounded-md py-2 pr-1 outline-none transition-[background-color,box-shadow] duration-150",
+        "group relative cursor-pointer items-stretch rounded-xl py-2.5 pr-1 outline-none transition-[background-color,box-shadow] duration-150",
         selected ? "bg-brand/[0.06]" : "hover:bg-slate-50",
         "focus-visible:ring-3 focus-visible:ring-brand/25",
         isDragging &&
@@ -62,7 +66,7 @@ export function TimelineStop({
       <div className="pt-[3px] text-right">
         <span
           className={cn(
-            "text-[17px] leading-6 font-semibold tracking-tight whitespace-nowrap tabular-nums",
+            "text-[20px] leading-6 font-semibold tracking-tight whitespace-nowrap tabular-nums",
             blocking
               ? "text-rose-700"
               : conflict
@@ -94,16 +98,26 @@ export function TimelineStop({
 
       <div className="relative min-w-0 max-w-[760px] pl-1">
         <div className="flex items-baseline justify-between gap-3">
-          <p className="truncate text-[14px] leading-6 font-semibold text-slate-900">
-            {job.suburb || "Unknown suburb"}
+          <p
+            className={cn(
+              "truncate text-[14px] leading-6 font-semibold",
+              resolved ? "text-slate-900" : "text-amber-800"
+            )}
+          >
+            {resolved ? job.suburb || "Stop" : "Location not resolved"}
           </p>
           <span className="shrink-0 pr-5 text-[11px] text-slate-400 tabular-nums">
-            {duration} min
+            {duration} min sampling
           </span>
         </div>
         <p className="truncate text-[12.5px] leading-5 text-slate-500">
           {job.address}
         </p>
+        {!resolved ? (
+          <p className="mt-0.5 text-[11px] text-amber-700">
+            Location required for travel estimate
+          </p>
+        ) : null}
 
         <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
           <span

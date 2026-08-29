@@ -1,16 +1,17 @@
-import { pointOf } from "@/lib/geo";
+import { resolvedPointOf } from "@/lib/geo";
 import { addMinutes, timeToMinutes } from "@/lib/routing/round-time";
-import { estimateTravelMinutes } from "@/lib/routing/travel";
+import { estimateTravelMinutesOrNull } from "@/lib/routing/travel";
 import type { DayPlanSettings, Job, RouteStop } from "@/lib/types";
 
 export function returnLegMinutes(
   settings: DayPlanSettings,
   lastJob: Job | undefined
-): number {
-  const from = lastJob ? pointOf(lastJob.latitude, lastJob.longitude) : null;
-  const to = pointOf(settings.finishLat, settings.finishLng);
-  if (!from || !to) return 0;
-  return estimateTravelMinutes(from, to, settings.travelBufferMinutes);
+): number | null {
+  const from = lastJob
+    ? resolvedPointOf(lastJob.latitude, lastJob.longitude, lastJob.suburb)
+    : null;
+  const to = resolvedPointOf(settings.finishLat, settings.finishLng);
+  return estimateTravelMinutesOrNull(from, to, settings.travelBufferMinutes);
 }
 
 export function totalDrivingMinutes(
@@ -24,7 +25,7 @@ export function totalDrivingMinutes(
   );
   const lastStop = stops[stops.length - 1];
   const lastJob = lastStop ? jobs[lastStop.jobId] : undefined;
-  return legs + returnLegMinutes(settings, lastJob);
+  return legs + (returnLegMinutes(settings, lastJob) ?? 0);
 }
 
 export function formatDuration(minutes: number): string {
@@ -45,10 +46,9 @@ export function plannedReturnTime(
   const lastStop = stops[stops.length - 1];
   const lastJob = lastStop ? jobs[lastStop.jobId] : undefined;
   if (!lastStop?.suggestedDeparture || !lastJob) return null;
-  return addMinutes(
-    lastStop.suggestedDeparture,
-    returnLegMinutes(settings, lastJob)
-  );
+  const returnMinutes = returnLegMinutes(settings, lastJob);
+  if (returnMinutes == null) return null;
+  return addMinutes(lastStop.suggestedDeparture, returnMinutes);
 }
 
 /**

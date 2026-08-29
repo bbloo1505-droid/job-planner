@@ -30,7 +30,7 @@ export function Sidebar() {
           href="/"
           aria-current={plannerActive ? "page" : undefined}
           className={cn(
-            "flex h-9 items-center gap-2.5 rounded-md px-2.5 text-[13px] transition-colors",
+            "flex h-9 items-center gap-2.5 rounded-xl px-3 text-[13px] transition-colors",
             plannerActive
               ? "bg-brand font-medium text-white"
               : "text-white/65 hover:bg-white/5 hover:text-white"
@@ -44,7 +44,7 @@ export function Sidebar() {
           href="/team"
           aria-current={teamActive ? "page" : undefined}
           className={cn(
-            "flex h-9 items-center gap-2.5 rounded-md px-2.5 text-[13px] transition-colors",
+            "flex h-9 items-center gap-2.5 rounded-xl px-3 text-[13px] transition-colors",
             teamActive
               ? "bg-brand font-medium text-white"
               : "text-white/65 hover:bg-white/5 hover:text-white"

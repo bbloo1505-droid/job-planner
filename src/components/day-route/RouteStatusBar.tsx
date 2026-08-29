@@ -121,7 +121,7 @@ function Bar({
     <div className="shrink-0 border-b border-hairline bg-white px-7 py-2">
       <div
         className={cn(
-          "flex h-9 items-center justify-between gap-3 rounded-md border px-3 text-[12.5px]",
+          "flex h-10 items-center justify-between gap-3 rounded-xl border px-3.5 text-[12.5px]",
           className
         )}
       >

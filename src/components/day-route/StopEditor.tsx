@@ -1,13 +1,18 @@
 "use client";
 
 import { AlertTriangle, CalendarOff, Check, X } from "lucide-react";
+import { AddressSearchField } from "@/components/day-route/AddressSearchField";
 import { BookingStatusText } from "@/components/day-route/BookingStatusBadge";
 import { Button } from "@/components/ui/button";
+import { SamplingDurationField } from "@/components/day-route/SamplingDurationField";
+import { jobHasResolvedLocation } from "@/lib/geo";
 import { formatDisplayTime } from "@/lib/routing/round-time";
+import { samplingDurationOf } from "@/lib/routing/sampling";
 import { useDayRouteStore } from "@/lib/store/day-route-store";
 import type {
   AppointmentConstraint,
   BookingStatus,
+  GeocodingResult,
   Job,
   RouteStop,
 } from "@/lib/types";
@@ -64,6 +69,17 @@ export function StopEditor() {
   const updateJobConstraint = useDayRouteStore((state) => state.updateJobConstraint);
   const updateBookingStatus = useDayRouteStore((state) => state.updateBookingStatus);
   const updateJobNotes = useDayRouteStore((state) => state.updateJobNotes);
+  const updateSamplingDuration = useDayRouteStore(
+    (state) => state.updateSamplingDuration
+  );
+  const changeJobAddress = useDayRouteStore((state) => state.changeJobAddress);
+  const confirmGeocodedAddress = useDayRouteStore(
+    (state) => state.confirmGeocodedAddress
+  );
+  const updatePendingJob = useDayRouteStore((state) => state.updatePendingJob);
+  const visitDefault = useDayRouteStore(
+    (state) => state.plan.settings.visitDurationMinutes
+  );
   const confirmSuggestedTime = useDayRouteStore((state) => state.confirmSuggestedTime);
   const moveOutOfDay = useDayRouteStore((state) => state.moveOutOfDay);
   const selectJob = useDayRouteStore((state) => state.selectJob);
@@ -80,6 +96,11 @@ export function StopEditor() {
       updateJobConstraint={updateJobConstraint}
       updateBookingStatus={updateBookingStatus}
       updateJobNotes={updateJobNotes}
+      updateSamplingDuration={updateSamplingDuration}
+      changeJobAddress={changeJobAddress}
+      confirmGeocodedAddress={confirmGeocodedAddress}
+      updatePendingJob={updatePendingJob}
+      visitDefault={visitDefault}
       confirmSuggestedTime={confirmSuggestedTime}
       moveOutOfDay={moveOutOfDay}
       selectJob={selectJob}
@@ -94,6 +115,11 @@ function StopEditorForm({
   updateJobConstraint,
   updateBookingStatus,
   updateJobNotes,
+  updateSamplingDuration,
+  changeJobAddress,
+  confirmGeocodedAddress,
+  updatePendingJob,
+  visitDefault,
   confirmSuggestedTime,
   moveOutOfDay,
   selectJob,
@@ -104,6 +130,11 @@ function StopEditorForm({
   updateJobConstraint: (jobId: string, constraint: AppointmentConstraint) => void;
   updateBookingStatus: (jobId: string, status: BookingStatus) => void;
   updateJobNotes: (jobId: string, notes: string) => void;
+  updateSamplingDuration: (jobId: string, minutes: number) => void;
+  changeJobAddress: (jobId: string) => void;
+  confirmGeocodedAddress: (jobId: string, result: GeocodingResult) => void;
+  updatePendingJob: (jobId: string, address: string) => void;
+  visitDefault: number;
   confirmSuggestedTime: (jobId: string) => void;
   moveOutOfDay: (stopId: string) => void;
   selectJob: (jobId: string | null) => void;
@@ -151,15 +182,40 @@ function StopEditorForm({
 
   return (
     <section className="panel animate-in fade-in slide-in-from-right-1 duration-150">
-      <div className="flex items-start justify-between gap-2 border-b border-hairline px-4 py-3">
+      <div className="panel-header flex items-start justify-between gap-2">
         <div className="min-w-0">
           <p className="eyebrow">
             Stop {stop.order + 1} of {totalStops}
           </p>
           <h2 className="mt-1 truncate text-[15px] font-semibold tracking-tight text-slate-900">
-            {job.suburb || "Unknown suburb"}
+            {jobHasResolvedLocation(job)
+              ? job.suburb
+              : "Location not resolved"}
           </h2>
-          <p className="truncate text-[12px] text-slate-500">{job.address}</p>
+          <p className="truncate text-[12px] text-slate-500">
+            {job.resolvedDisplayAddress ?? job.address}
+          </p>
+          {jobHasResolvedLocation(job) ? (
+            <button
+              type="button"
+              onClick={() => changeJobAddress(job.id)}
+              className="mt-1 text-[11.5px] font-medium text-brand hover:text-brand-strong"
+            >
+              Change address
+            </button>
+          ) : (
+            <div className="mt-2">
+              <p className="mb-1.5 text-[11.5px] text-amber-700">
+                Address changed — resolve again
+              </p>
+              <AddressSearchField
+                query={job.address}
+                onQueryChange={(value) => updatePendingJob(job.id, value)}
+                onPick={(result) => confirmGeocodedAddress(job.id, result)}
+                inputAriaLabel="Address to resolve"
+              />
+            </div>
+          )}
         </div>
         <button
           type="button"
@@ -196,6 +252,11 @@ function StopEditorForm({
       ) : null}
 
       <div className="space-y-2.5 px-4 py-3">
+        <SamplingDurationField
+          minutes={samplingDurationOf(job, { visitDurationMinutes: visitDefault })}
+          onChange={(value) => updateSamplingDuration(job.id, value)}
+        />
+
         <div>
           <span className="field-label mb-1.5">Tenant availability</span>
           <div className="grid grid-cols-5 gap-1">

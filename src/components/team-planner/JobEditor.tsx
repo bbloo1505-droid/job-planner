@@ -71,7 +71,7 @@ export function JobEditor() {
             persistText();
             selectJob(null);
           }}
-          className="flex size-7 items-center justify-center rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+          className="flex size-8 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700"
         >
           <X className="size-3.5" />
         </button>

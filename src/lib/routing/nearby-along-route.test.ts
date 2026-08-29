@@ -40,10 +40,37 @@ describe("nearby opportunities", () => {
       existingStops: loaded.plan.stops,
     });
     const detours = matches.map((match) => match.detourMinutes);
+    const known = detours.filter((item): item is number => item != null);
     assert.deepEqual(
-      detours,
-      [...detours].sort((a, b) => a - b)
+      known,
+      [...known].sort((a, b) => a - b)
     );
-    assert.equal(detours.every(Number.isFinite), true);
+    assert.equal(known.every(Number.isFinite), true);
+  });
+
+  it("does not invent a zero-minute detour for an unresolved opportunity", () => {
+    const scenario = getValidationScenario("mid-day-addition")!;
+    const loaded = materialiseScenario(scenario);
+    const routeJobs = loaded.plan.stops
+      .map((stop) => loaded.jobs[stop.jobId])
+      .filter((job): job is Job => Boolean(job));
+    const unresolved: Job = {
+      id: "unresolved-bay",
+      address: "cork st deception bay",
+      suburb: undefined,
+      estimatedMinutes: 20,
+      samplingDurationMinutes: 20,
+      constraint: { type: "flexible" },
+      bookingStatus: "uncontacted",
+    };
+    const matches = getNearbyAlongRoute({
+      unbooked: [...loaded.plan.unbookedPool, unresolved],
+      routeJobs,
+      settings: loaded.plan.settings,
+      existingStops: loaded.plan.stops,
+    });
+    const match = matches.find((item) => item.job.id === unresolved.id);
+    assert.ok(match);
+    assert.equal(match.detourMinutes, null);
   });
 });

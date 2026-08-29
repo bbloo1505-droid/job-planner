@@ -1,4 +1,6 @@
+import { jobHasResolvedLocation } from "@/lib/geo";
 import { optimiseDay } from "@/lib/routing/optimise-day";
+import { samplingDurationOf } from "@/lib/routing/sampling";
 import type {
   DayPlanSettings,
   Job,
@@ -25,6 +27,17 @@ export function getNearbyAlongRoute(input: {
   return unbooked
     .filter((job) => !routedIds.has(job.id) && Boolean(job.address.trim()))
     .map((job) => {
+      const samplingMinutes = samplingDurationOf(job, settings);
+      if (!jobHasResolvedLocation(job)) {
+        return {
+          job,
+          detourMinutes: null,
+          samplingMinutes,
+          dayImpactMinutes: null,
+          bestInsertionIndex: routeJobs.length,
+        };
+      }
+
       let bestInsertionIndex = routeJobs.length;
       let bestDetour = Number.POSITIVE_INFINITY;
 
@@ -47,11 +60,19 @@ export function getNearbyAlongRoute(input: {
         }
       }
 
+      const detourMinutes = Number.isFinite(bestDetour) ? bestDetour : 0;
       return {
         job,
-        detourMinutes: Number.isFinite(bestDetour) ? bestDetour : 0,
+        detourMinutes,
+        samplingMinutes,
+        dayImpactMinutes: detourMinutes + samplingMinutes,
         bestInsertionIndex,
       };
     })
-    .sort((a, b) => a.detourMinutes - b.detourMinutes);
+    .sort((a, b) => {
+      if (a.detourMinutes == null && b.detourMinutes == null) return 0;
+      if (a.detourMinutes == null) return 1;
+      if (b.detourMinutes == null) return -1;
+      return a.detourMinutes - b.detourMinutes;
+    });
 }

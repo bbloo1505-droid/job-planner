@@ -30,16 +30,19 @@ export function UnassignedPanel({
   return (
     <section
       ref={setNodeRef}
+      data-testid="unassigned-panel"
       className={cn(
-        "flex h-full min-h-0 flex-col border-l border-hairline bg-white",
+        "flex h-full min-h-0 flex-col border-l border-slate-200/80 bg-[#f8f9fb]",
         isOver && "bg-brand/[0.04]"
       )}
     >
-      <div className="flex items-center justify-between border-b border-hairline px-3 py-2.5">
+      <div className="flex items-center justify-between px-4 py-3.5">
         <h2 className="panel-heading">Unassigned jobs</h2>
-        <span className="text-[11px] text-slate-400 tabular-nums">{items.length}</span>
+        <span className="rounded-full bg-white px-2 py-0.5 text-[11px] font-medium text-slate-500 tabular-nums shadow-sm">
+          {items.length}
+        </span>
       </div>
-      <div className="min-h-0 flex-1 space-y-1 overflow-auto p-1.5">
+      <div className="min-h-0 flex-1 space-y-2 overflow-auto px-3 pb-3">
         {items.length === 0 ? (
           <p className="px-1 py-8 text-center text-[12px] text-slate-400">
             Nothing in the queue.
@@ -56,7 +59,7 @@ export function UnassignedPanel({
           ))
         )}
       </div>
-      <p className="border-t border-hairline px-3 py-2 text-[11px] text-slate-400">
+      <p className="px-4 py-3 text-[11px] text-slate-400">
         Drag onto a consultant / day to allocate.
       </p>
     </section>

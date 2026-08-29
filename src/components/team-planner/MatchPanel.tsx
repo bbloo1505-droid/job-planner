@@ -67,11 +67,11 @@ export function MatchPanel() {
 
   return (
     <section
-      className="flex min-h-0 flex-col border-l border-hairline bg-white"
+      className="flex min-h-0 flex-col border-l border-slate-200/80 bg-[#f8f9fb]"
       data-testid="match-panel"
       data-job-id={job.id}
     >
-      <div className="border-b border-hairline px-3 py-2">
+      <div className="border-b border-slate-200/70 bg-white px-4 py-3">
         <button
           type="button"
           onClick={() => selectJob(null)}
@@ -130,10 +130,10 @@ export function MatchPanel() {
                       })
                     }
                     className={cn(
-                      "w-full rounded-md border px-2.5 py-2 text-left",
+                      "w-full rounded-xl border px-3 py-2.5 text-left transition-colors",
                       active
-                        ? "border-brand bg-brand/[0.06]"
-                        : "border-hairline hover:bg-slate-50"
+                        ? "border-brand/40 bg-brand/[0.06] shadow-sm"
+                        : "border-slate-200/80 bg-white hover:border-slate-300 hover:bg-slate-50"
                     )}
                   >
                     <span className="flex items-start gap-2">
@@ -183,7 +183,7 @@ export function MatchPanel() {
                     <Button
                       type="button"
                       data-testid="assign-from-map"
-                      className="mt-1.5 h-8 w-full bg-brand text-[12px] text-white hover:bg-brand-strong"
+                      className="mt-2 h-9 w-full rounded-xl bg-brand text-[13px] font-semibold text-white hover:bg-brand-strong"
                       onClick={() => assignJob(job.id, item.consultantId, item.date)}
                     >
                       Assign {first} / {day}

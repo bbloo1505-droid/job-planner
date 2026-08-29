@@ -26,13 +26,40 @@ export type WorkCategory =
   | "meeting"
   | "laboratory";
 
+export type GeocodingStatus =
+  | "unresolved"
+  | "confirmed"
+  | "stale"
+  | "not_found"
+  | "needs_confirmation";
+
+export interface GeocodingResult {
+  id: string;
+  displayAddress: string;
+  latitude: number;
+  longitude: number;
+  suburb?: string;
+  state?: string;
+  postcode?: string;
+  country?: string;
+  provider: string;
+}
+
 export interface Job {
   id: string;
   address: string;
   suburb?: string;
   latitude?: number;
   longitude?: number;
+  /** Time on site / sampling duration. Preferred over the global visit default. */
+  samplingDurationMinutes?: number;
   estimatedMinutes: number;
+  enteredAddress?: string;
+  resolvedDisplayAddress?: string;
+  geocodingProvider?: string;
+  geocodedAt?: string;
+  geocodingStatus?: GeocodingStatus;
+  geocodeCandidates?: GeocodingResult[];
   constraint: AppointmentConstraint;
   bookingStatus: BookingStatus;
   priority?: Priority;
@@ -147,7 +174,9 @@ export interface SlotSuggestion {
 
 export interface NearbyMatch {
   job: Job;
-  detourMinutes: number;
+  detourMinutes: number | null;
+  samplingMinutes: number;
+  dayImpactMinutes: number | null;
   bestInsertionIndex: number;
 }
 

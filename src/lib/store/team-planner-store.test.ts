@@ -98,6 +98,48 @@ describe("team planner store", () => {
     assert.equal(state.jobs[jobId].workCategory, "confirmed_work");
   });
 
+  it("navigates months without mutating job dates", () => {
+    const store = useTeamPlannerStore.getState();
+    assert.equal(store.boardView, "month");
+    assert.equal(store.monthStart, "2026-08-01");
+    const before = store.allocations.find((item) => item.id === "al-206");
+    assert.equal(before?.scheduledDate, "2026-08-13");
+    store.selectJob("tj-206");
+    store.goMonth(1);
+    let state = useTeamPlannerStore.getState();
+    assert.equal(state.monthStart, "2026-09-01");
+    assert.equal(state.selectedJobId, null);
+    assert.equal(
+      state.allocations.find((item) => item.id === "al-206")?.scheduledDate,
+      "2026-08-13"
+    );
+    store.goMonth(-1);
+    state = useTeamPlannerStore.getState();
+    assert.equal(state.monthStart, "2026-08-01");
+    store.selectDate("2026-08-25");
+    state = useTeamPlannerStore.getState();
+    assert.equal(state.selectedDate, "2026-08-25");
+    assert.equal(state.weekStart, "2026-08-24");
+    assert.equal(state.geoScope, "2026-08-25");
+  });
+
+  it("reveals a scheduled job month and date without mutating the allocation", () => {
+    const store = useTeamPlannerStore.getState();
+    store.goMonth(1);
+    store.revealDate("2026-08-25", { consultantId: "c-taylor", jobId: "tj-223" });
+    const state = useTeamPlannerStore.getState();
+    assert.equal(state.monthStart, "2026-08-01");
+    assert.equal(state.selectedDate, "2026-08-25");
+    assert.equal(state.weekStart, "2026-08-24");
+    assert.equal(state.selectedJobId, "tj-223");
+    assert.equal(state.geoScope, "2026-08-25");
+    assert.equal(state.focusTarget?.date, "2026-08-25");
+    assert.equal(
+      state.allocations.find((item) => item.jobId === "tj-223")?.scheduledDate,
+      "2026-08-25"
+    );
+  });
+
   it("keeps jobs when allocations are removed", () => {
     const jobId = "tj-100";
     const allocation = useTeamPlannerStore

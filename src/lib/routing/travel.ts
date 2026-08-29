@@ -35,3 +35,13 @@ export function estimateTravelMinutes(
 ): number {
   return travelEstimator.estimateTravelMinutes(from, to, bufferMinutes);
 }
+
+/** Null when either endpoint is unresolved — never invent a 0-minute drive. */
+export function estimateTravelMinutesOrNull(
+  from: GeoPoint | null,
+  to: GeoPoint | null,
+  bufferMinutes: number
+): number | null {
+  if (!from || !to) return null;
+  return estimateTravelMinutes(from, to, bufferMinutes);
+}

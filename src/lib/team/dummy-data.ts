@@ -1,4 +1,5 @@
 import { geocodeAddress } from "@/lib/geo";
+import { createMonthDemoExtras } from "@/lib/team/month-demo";
 import type {
   Allocation,
   Consultant,
@@ -174,6 +175,9 @@ export function createTeamDemo(): {
     jobs[item.id] = seedJob(item);
   }
 
+  const extras = createMonthDemoExtras();
+  Object.assign(jobs, extras.jobs);
+
   const allocations: Allocation[] = [
     alloc("al-100", "tj-100", "c-alex", "2026-08-31", "08:00", 0),
     alloc("al-101", "tj-101", "c-alex", "2026-08-31", "13:00", 1),
@@ -201,8 +205,8 @@ export function createTeamDemo(): {
   ];
 
   return {
-    consultants: TEAM_CONSULTANTS.map((item) => ({ ...item })),
+    consultants: [...TEAM_CONSULTANTS, ...extras.consultants].map((item) => ({ ...item })),
     jobs,
-    allocations,
+    allocations: [...allocations, ...extras.allocations],
   };
 }

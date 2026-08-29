@@ -27,13 +27,23 @@ function jobFromAddress(
   extras: Partial<Job> = {}
 ): Job {
   const geo = geocodeAddress(address);
+  const duration =
+    extras.samplingDurationMinutes ??
+    extras.estimatedMinutes ??
+    DEFAULT_SETTINGS.visitDurationMinutes;
   return {
     id,
     address: geo?.address ?? address,
     suburb: geo?.suburb,
     latitude: geo?.lat,
     longitude: geo?.lng,
-    estimatedMinutes: DEFAULT_SETTINGS.visitDurationMinutes,
+    samplingDurationMinutes: duration,
+    estimatedMinutes: duration,
+    enteredAddress: address,
+    resolvedDisplayAddress: geo?.address ?? address,
+    geocodingProvider: geo ? "local-lookup" : undefined,
+    geocodedAt: geo ? "2026-08-29T00:00:00.000Z" : undefined,
+    geocodingStatus: geo ? "confirmed" : "unresolved",
     constraint: { type: "flexible" },
     bookingStatus: "uncontacted",
     priority: extras.priority ?? "normal",
