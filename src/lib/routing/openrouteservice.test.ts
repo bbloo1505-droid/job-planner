@@ -2,7 +2,9 @@ import assert from "node:assert/strict";
 import { afterEach, describe, it } from "node:test";
 import { serverRoadRouteCache } from "@/lib/routing/route-cache";
 import {
+  OPENROUTE_DIRECTIONS_BODY,
   OPENROUTESERVICE_DIRECTIONS_URL,
+  OPENROUTESERVICE_FALLBACK_URL,
   decodeOpenRoutePolyline,
   mapOpenRouteFeature,
   setOpenRouteFetcherForTests,
@@ -87,6 +89,8 @@ describe("openrouteservice mapper", () => {
     setOpenRouteTimeoutForTests(30);
     setOpenRouteFetcherForTests((_url, init) => {
       assert.equal(_url, OPENROUTESERVICE_DIRECTIONS_URL);
+      const body = JSON.parse(String(init.body)) as { preference?: string };
+      assert.equal(body.preference, OPENROUTE_DIRECTIONS_BODY.preference);
       return new Promise((_, reject) => {
         init.signal?.addEventListener("abort", () => {
           const error = new Error("aborted");
@@ -104,5 +108,39 @@ describe("openrouteservice mapper", () => {
         ]),
       (error: unknown) => error instanceof RoutingTimeoutError
     );
+  });
+
+  it("falls back to HeiGIT when the official host rejects the format", async () => {
+    process.env.OPENROUTESERVICE_API_KEY = "test-key";
+    const urls: string[] = [];
+    setOpenRouteFetcherForTests(async (url) => {
+      urls.push(url);
+      if (url === OPENROUTESERVICE_DIRECTIONS_URL) {
+        return new Response("This response format is not supported", { status: 406 });
+      }
+      return Response.json({
+        routes: [
+          {
+            summary: { distance: 5638, duration: 722 },
+            segments: [{ distance: 5638, duration: 722 }],
+            geometry: {
+              type: "LineString",
+              coordinates: [
+                [153.006, -27.47],
+                [152.973, -27.5],
+              ],
+            },
+          },
+        ],
+      });
+    });
+    const provider = new OpenRouteServiceProvider();
+    const route = await provider.getDrivingRoute([
+      [153.006, -27.47],
+      [152.973, -27.5],
+    ]);
+    assert.deepEqual(urls, [OPENROUTESERVICE_DIRECTIONS_URL, OPENROUTESERVICE_FALLBACK_URL]);
+    assert.equal(route.legs.length, 1);
+    assert.equal(route.totalDistanceMeters, 5638);
   });
 });

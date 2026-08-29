@@ -67,7 +67,9 @@ async function postRoute(coordinates: Array<[number, number]>): Promise<RoadRout
         ? "Routing rate limited"
         : payload.error === "no_route"
           ? "No route found"
-          : "Routing unavailable"
+          : payload.error === "unconfigured"
+            ? "Routing is not configured"
+            : "Routing unavailable"
     );
   }
   const route = payload.route;

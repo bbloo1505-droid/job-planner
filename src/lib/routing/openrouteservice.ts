@@ -17,7 +17,18 @@ export function setOpenRouteTimeoutForTests(ms: number | null): void {
 }
 
 export const OPENROUTESERVICE_DIRECTIONS_URL =
+  "https://api.openrouteservice.org/v2/directions/driving-car/json";
+
+export const OPENROUTESERVICE_FALLBACK_URL =
   "https://api.heigit.org/openrouteservice/v2/directions/driving-car/json";
+
+const DIRECTIONS_URLS = [OPENROUTESERVICE_DIRECTIONS_URL, OPENROUTESERVICE_FALLBACK_URL];
+
+/** Fastest road path, including tollways. Times are free-flow, not live traffic. */
+export const OPENROUTE_DIRECTIONS_BODY = {
+  geometry: true,
+  preference: "fastest" as const,
+};
 
 export type OpenRouteFetcher = (
   url: string,
@@ -129,28 +140,35 @@ async function fetchOpenRoute(
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), openRouteTimeoutMs);
   try {
-    const response = await openRouteFetcher(OPENROUTESERVICE_DIRECTIONS_URL, {
-      method: "POST",
-      headers: {
-        Accept: "application/json",
-        "Content-Type": "application/json",
-        Authorization: getOpenRouteServiceApiKey(),
-      },
-      body: JSON.stringify({
-        coordinates,
-        geometry: true,
-      }),
-      cache: "no-store",
-      signal: controller.signal,
-    });
-    if (response.status === 429) {
-      throw new RoutingUnavailableError("Routing rate limited");
+    let lastStatus = 0;
+    for (const url of DIRECTIONS_URLS) {
+      const response = await openRouteFetcher(url, {
+        method: "POST",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+          Authorization: getOpenRouteServiceApiKey(),
+        },
+        body: JSON.stringify({
+          coordinates,
+          ...OPENROUTE_DIRECTIONS_BODY,
+        }),
+        cache: "no-store",
+        signal: controller.signal,
+      });
+      lastStatus = response.status;
+      if (response.status === 429) {
+        throw new RoutingUnavailableError("Routing rate limited");
+      }
+      if (response.ok) {
+        const payload: unknown = await response.json();
+        return mapOpenRouteFeature(payload, coordinates.length - 1);
+      }
+      if (!shouldTryNextDirectionsHost(response.status)) {
+        throw new RoutingUnavailableError(`Routing returned ${response.status}`);
+      }
     }
-    if (!response.ok) {
-      throw new RoutingUnavailableError(`Routing returned ${response.status}`);
-    }
-    const payload: unknown = await response.json();
-    return mapOpenRouteFeature(payload, coordinates.length - 1);
+    throw new RoutingUnavailableError(`Routing returned ${lastStatus || "error"}`);
   } catch (error) {
     if (error instanceof RoutingTimeoutError || error instanceof RoutingUnavailableError) {
       throw error;
@@ -165,6 +183,10 @@ async function fetchOpenRoute(
   } finally {
     clearTimeout(timer);
   }
+}
+
+function shouldTryNextDirectionsHost(status: number): boolean {
+  return status === 401 || status === 403 || status === 404 || status === 406 || status >= 500;
 }
 
 function mapOpenRouteJson(

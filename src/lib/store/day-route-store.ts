@@ -1200,20 +1200,24 @@ export const useDayRouteStore = create<DayRouteState>((set, get) => ({
         roadRouteMessage: null,
         plan: withTimedPlan(latest.plan, timed),
       });
-    } catch {
+    } catch (error) {
       if (token !== roadRouteGeneration) return;
       const latest = get();
+      const message =
+        error instanceof Error && error.message.toLowerCase().includes("not configured")
+          ? "Road routing key is missing on this host — using estimated travel."
+          : FALLBACK_ROUTE_MESSAGE;
       const fallbackState: Snapshot = {
         ...cloneSnapshot(latest),
         ...EMPTY_ROAD,
         roadRouteStatus: "fallback",
-        roadRouteMessage: FALLBACK_ROUTE_MESSAGE,
+        roadRouteMessage: message,
       };
       const timed = applyResult(fallbackState, true);
       set({
         ...EMPTY_ROAD,
         roadRouteStatus: "fallback",
-        roadRouteMessage: FALLBACK_ROUTE_MESSAGE,
+        roadRouteMessage: message,
         plan: withTimedPlan(latest.plan, timed),
       });
     }

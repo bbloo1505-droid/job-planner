@@ -54,7 +54,7 @@ async function main() {
   await page.getByRole("button", { name: /fit route/i }).waitFor();
   await page
     .getByText(
-      /Road route via openrouteservice|Estimated route — live road routing unavailable|Schematic route line/
+      /Fastest road route via openrouteservice|Road route via openrouteservice|Estimated route — live road routing unavailable|Schematic route line/
     )
     .waitFor();
 

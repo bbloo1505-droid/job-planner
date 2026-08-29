@@ -245,7 +245,7 @@ export function OptimisedWorkspace() {
             ) : null}
             <Dot />
             {roadRouteStatus === "live" ? (
-              <span className="text-slate-400">Road travel times</span>
+              <span className="text-slate-400">Uncongested road times — no live traffic</span>
             ) : roadRouteStatus === "fallback" ? (
               <span className="text-amber-700">
                 {roadRouteMessage ?? "Live road routing unavailable — using estimated travel."}

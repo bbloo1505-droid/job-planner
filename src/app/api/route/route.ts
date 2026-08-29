@@ -6,6 +6,8 @@ import {
 } from "@/lib/routing/provider";
 import { getDrivingRoute } from "@/lib/routing/directions";
 
+export const maxDuration = 10;
+
 export async function POST(request: Request): Promise<Response> {
   let coordinates: unknown;
   try {
