@@ -1,26 +1,306 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+@custom-variant dark (&:is(.dark *));
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+  --font-sans: var(--font-sans);
   --font-mono: var(--font-geist-mono);
+  --font-heading: var(--font-sans);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+/* Prensa brand palette, sampled from the logo. */
+@theme {
+  --color-navy: #1a2744;
+  --color-navy-soft: #243356;
+  --color-navy-line: #2c3b5e;
+  --color-brand: #1b7ab8;
+  --color-brand-strong: #15628f;
+  --color-brand-light: #35a8e0;
+  --color-prensa-green: #7ac143;
+  --color-prensa-green-ink: #46761f;
+  --color-prensa-orange: #f7941e;
+  --color-canvas: #f4f6f9;
+  --color-hairline: #e5e9ef;
+}
+
+:root {
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: oklch(0.205 0 0);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.556 0 0);
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: oklch(0.708 0 0);
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --radius: 0.625rem;
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
+}
+
+.dark {
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.205 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.922 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.269 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.556 0 0);
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.556 0 0);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    color-scheme: light;
+  }
+  body {
+    @apply bg-background text-foreground font-sans;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@layer components {
+  .field-label {
+    @apply block text-[11px] font-medium text-slate-500;
+  }
+
+  .field-input {
+    @apply h-8 w-full rounded-lg border border-hairline bg-white px-2.5 text-[13px] text-slate-900 transition-colors outline-none;
+    @apply hover:border-slate-300 focus:border-brand focus:ring-3 focus:ring-brand/15;
+  }
+
+  .panel {
+    @apply rounded-lg border border-hairline bg-white;
+  }
+
+  .panel-heading {
+    @apply text-[12.5px] font-semibold tracking-tight text-slate-900;
+  }
+
+  .eyebrow {
+    @apply text-[10.5px] font-semibold tracking-[0.14em] text-slate-400 uppercase;
+  }
+}
+
+.prensa-map-canvas {
+  width: 100%;
+  height: 100%;
+}
+
+.prensa-map-canvas .maplibregl-canvas-container,
+.prensa-map-canvas .maplibregl-canvas {
+  outline: none;
+}
+
+.prensa-map-marker {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  background: var(--marker-colour, #64748b);
+  border: 1.75px solid #fff;
+  color: #fff;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+.prensa-map-marker.is-unassigned {
+  width: 12px;
+  height: 12px;
+  background: #fff;
+  border: 1.5px solid #9a5a58;
+}
+
+.prensa-map-marker.is-unassigned.is-selected {
+  width: 18px;
+  height: 18px;
+  border-width: 2.25px;
+  box-shadow: 0 0 0 6px rgb(154 90 88 / 0.16);
+}
+
+.prensa-map-marker.is-scheduled.is-selected {
+  box-shadow: 0 0 0 5px color-mix(in srgb, var(--marker-colour) 22%, transparent);
+}
+
+.prensa-map-marker-initials {
+  font-size: 8.5px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  pointer-events: none;
+}
+
+.prensa-map-marker-day {
+  position: absolute;
+  top: -13px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: #64748b;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.prensa-map-marker-rank {
+  position: absolute;
+  top: -6px;
+  right: -7px;
+  display: flex;
+  width: 14px;
+  height: 14px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: #1a2744;
+  font-size: 8px;
+  font-weight: 700;
+  color: #fff;
+  pointer-events: none;
+}
+
+.prensa-map-cluster {
+  display: flex;
+  min-width: 28px;
+  height: 28px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: #1a2744;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  border: 2px solid #fff;
+  cursor: pointer;
+}
+
+.prensa-map-place {
+  pointer-events: none;
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #b0bac6;
+  white-space: nowrap;
+}
+
+.prensa-map-pop .maplibregl-popup-content {
+  padding: 6px 8px;
+  border-radius: 4px;
+  border: 1px solid #e5e9ef;
+  box-shadow: none;
+  background: #fff;
+}
+
+.prensa-map-pop .maplibregl-popup-tip {
+  border-top-color: #e5e9ef;
+}
+
+.prensa-map-pop .pop-title {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 650;
+  color: #0f172a;
+}
+
+.prensa-map-pop .pop-line {
+  margin: 1px 0 0;
+  font-size: 11px;
+  color: #334155;
+}
+
+.prensa-map-pop .pop-muted {
+  margin: 1px 0 0;
+  font-size: 10.5px;
+  color: #64748b;
 }

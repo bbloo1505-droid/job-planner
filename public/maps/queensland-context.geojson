@@ -1,0 +1,120 @@
+{
+  "type": "FeatureCollection",
+  "name": "queensland-context",
+  "features": [
+    {
+      "type": "Feature",
+      "id": "queensland",
+      "properties": { "kind": "state", "name": "Queensland" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [153.55, -28.16],
+          [153.50, -27.88],
+          [153.42, -27.45],
+          [153.18, -26.80],
+          [153.12, -26.40],
+          [153.08, -25.90],
+          [152.85, -25.30],
+          [152.55, -24.82],
+          [151.90, -24.20],
+          [151.30, -23.85],
+          [150.85, -23.35],
+          [150.50, -22.50],
+          [149.90, -22.10],
+          [149.20, -21.15],
+          [148.75, -20.05],
+          [147.10, -19.25],
+          [146.80, -19.00],
+          [146.20, -18.50],
+          [146.00, -17.55],
+          [145.78, -16.90],
+          [145.35, -15.50],
+          [145.20, -14.20],
+          [143.95, -14.30],
+          [143.55, -12.70],
+          [142.85, -11.50],
+          [142.53, -10.69],
+          [141.90, -11.50],
+          [141.85, -12.70],
+          [141.70, -15.10],
+          [141.35, -16.10],
+          [140.20, -17.30],
+          [138.70, -16.80],
+          [138.00, -17.50],
+          [138.00, -26.00],
+          [141.00, -26.00],
+          [141.00, -29.00],
+          [148.80, -28.98],
+          [150.05, -28.55],
+          [151.50, -28.54],
+          [152.55, -28.32],
+          [153.55, -28.16]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "seq",
+      "properties": { "kind": "seq", "name": "South East Queensland" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [152.55, -26.12],
+          [153.15, -26.12],
+          [153.22, -26.55],
+          [153.50, -26.85],
+          [153.55, -28.18],
+          [153.15, -28.18],
+          [152.85, -27.80],
+          [151.72, -27.72],
+          [151.68, -27.30],
+          [152.15, -26.65],
+          [152.55, -26.12]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "place-brisbane",
+      "properties": { "kind": "place", "name": "Brisbane" },
+      "geometry": { "type": "Point", "coordinates": [153.0251, -27.4698] }
+    },
+    {
+      "type": "Feature",
+      "id": "place-gold-coast",
+      "properties": { "kind": "place", "name": "Gold Coast" },
+      "geometry": { "type": "Point", "coordinates": [153.4, -28.0167] }
+    },
+    {
+      "type": "Feature",
+      "id": "place-sunshine-coast",
+      "properties": { "kind": "place", "name": "Sunshine Coast" },
+      "geometry": { "type": "Point", "coordinates": [153.09, -26.655] }
+    },
+    {
+      "type": "Feature",
+      "id": "place-toowoomba",
+      "properties": { "kind": "place", "name": "Toowoomba" },
+      "geometry": { "type": "Point", "coordinates": [151.9507, -27.5598] }
+    },
+    {
+      "type": "Feature",
+      "id": "place-gympie",
+      "properties": { "kind": "place", "name": "Gympie" },
+      "geometry": { "type": "Point", "coordinates": [152.6655, -26.1903] }
+    },
+    {
+      "type": "Feature",
+      "id": "place-bundaberg",
+      "properties": { "kind": "place", "name": "Bundaberg" },
+      "geometry": { "type": "Point", "coordinates": [152.3489, -24.8661] }
+    },
+    {
+      "type": "Feature",
+      "id": "place-rockhampton",
+      "properties": { "kind": "place", "name": "Rockhampton" },
+      "geometry": { "type": "Point", "coordinates": [150.5136, -23.3781] }
+    }
+  ]
+}
