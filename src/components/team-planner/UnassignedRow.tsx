@@ -35,6 +35,8 @@ export function UnassignedRow({
     <div
       ref={setNodeRef}
       style={{ transform: CSS.Translate.toString(transform) }}
+      {...attributes}
+      {...listeners}
       title={job.jobNumber}
       data-job-id={job.id}
       data-work-category={category.id}
@@ -53,8 +55,6 @@ export function UnassignedRow({
           onSelect();
         }
       }}
-      {...attributes}
-      {...listeners}
       className={cn(
         "soft-card flex w-full cursor-grab overflow-hidden text-left transition-shadow active:cursor-grabbing",
         selected && "ring-2 ring-brand/40 ring-offset-1",
