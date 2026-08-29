@@ -30,12 +30,12 @@ export function PlanDayForm() {
   return (
     <div className="flex h-full flex-col bg-canvas">
       <header className="shrink-0 border-b border-slate-200/70 bg-white">
-        <div className="mx-auto flex w-full max-w-[920px] flex-col gap-4 px-6 py-5 lg:px-8">
+        <div className="mx-auto flex w-full max-w-[920px] flex-col gap-4 px-4 py-4 md:px-6 md:py-5 lg:px-8">
           <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
             <div className="min-w-0">
               <p className="eyebrow">Day Route Planner</p>
               <div className="mt-1 flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
-                <h1 className="text-[26px] leading-none font-semibold tracking-tight text-slate-900">
+                <h1 className="text-[22px] leading-none font-semibold tracking-tight text-slate-900 md:text-[26px]">
                   {date ? `Plan ${format(date, "EEEE")}` : "Plan your day"}
                 </h1>
                 {date ? (
@@ -45,11 +45,11 @@ export function PlanDayForm() {
                 ) : null}
               </div>
             </div>
-            <div className="flex flex-wrap items-end gap-3">
+            <div className="grid w-full grid-cols-2 gap-3 sm:flex sm:w-auto sm:flex-wrap sm:items-end">
               <Field label="Start">
                 <input
                   type="time"
-                  className="field-input h-8 w-[7.5rem]"
+                  className="field-input h-10 w-full sm:h-8 sm:w-[7.5rem]"
                   aria-label="Day start"
                   value={settings.startTime}
                   onChange={(event) =>
@@ -60,7 +60,7 @@ export function PlanDayForm() {
               <Field label="End">
                 <input
                   type="time"
-                  className="field-input h-8 w-[7.5rem]"
+                  className="field-input h-10 w-full sm:h-8 sm:w-[7.5rem]"
                   aria-label="Day end"
                   value={settings.workingHoursEnd ?? "16:00"}
                   onChange={(event) =>
@@ -68,14 +68,16 @@ export function PlanDayForm() {
                   }
                 />
               </Field>
-              <Field label="Date">
-                <input
-                  type="date"
-                  className="field-input h-8 w-[10.5rem]"
-                  value={settings.date}
-                  onChange={(event) => updateSettings({ date: event.target.value })}
-                />
-              </Field>
+              <div className="col-span-2 sm:col-auto">
+                <Field label="Date">
+                  <input
+                    type="date"
+                    className="field-input h-10 w-full sm:h-8 sm:w-[10.5rem]"
+                    value={settings.date}
+                    onChange={(event) => updateSettings({ date: event.target.value })}
+                  />
+                </Field>
+              </div>
             </div>
           </div>
           <label className="block space-y-1">
@@ -83,7 +85,7 @@ export function PlanDayForm() {
             <span className="relative block">
               <MapPin className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-slate-400" />
               <input
-                className="field-input h-9 pl-8"
+                className="field-input h-10 pl-8 md:h-9"
                 aria-label="Start / finish location"
                 placeholder="Milton office"
                 value={office}
@@ -100,10 +102,10 @@ export function PlanDayForm() {
         </div>
       </header>
 
-      <div className="min-h-0 flex-1 overflow-auto px-6 py-5 lg:px-8">
+      <div className="min-h-0 flex-1 overflow-auto px-4 py-4 md:px-6 md:py-5 lg:px-8">
         <div className="mx-auto w-full max-w-[920px]">
           <section className="panel">
-            <div className="flex items-end justify-between gap-3 border-b border-slate-100 px-5 py-3.5">
+            <div className="flex items-end justify-between gap-3 border-b border-slate-100 px-4 py-3.5 sm:px-5">
               <div>
                 <h2 className="panel-heading">Properties</h2>
                 <p className="mt-0.5 text-[12px] text-slate-500">
@@ -188,7 +190,10 @@ export function PlanDayForm() {
       </div>
 
       <footer className="shrink-0 border-t border-slate-200/80 bg-white/95 shadow-[0_-8px_24px_-18px_rgb(26_39_68_/_0.35)] backdrop-blur-sm">
-        <div className="mx-auto flex w-full max-w-[920px] flex-col gap-3 px-6 py-3.5 sm:flex-row sm:items-center sm:justify-between lg:px-8">
+        <div
+          className="mx-auto flex w-full max-w-[920px] flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between md:px-6 lg:px-8"
+          style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
+        >
           <p className="text-[13px] text-slate-500">
             <span className="mr-1.5 inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-navy px-1.5 text-[12px] font-semibold text-white tabular-nums">
               {typedCount}

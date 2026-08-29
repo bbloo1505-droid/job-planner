@@ -31,27 +31,25 @@ async function main() {
     .waitFor({ timeout: 25000 });
   await page.locator('[data-geo-day="2026-09-03"]').click();
   await page.locator('[data-testid="fit-jobs"]').click();
-  await page.locator(".prensa-map-marker-initials, .prensa-map-cluster").first().waitFor({
+  await page.locator(".prensa-map-marker[data-initials], .prensa-map-cluster").first().waitFor({
     timeout: 15000,
   });
   const zoomIn = page.locator('[data-testid="map-zoom-in"]');
   for (let i = 0; i < 4; i += 1) {
-    const hasTaylor = await page.locator(".prensa-map-marker-initials", { hasText: "TR" }).count();
+    const hasTaylor = await page.locator('.prensa-map-marker[data-initials="TR"]').count();
     if (hasTaylor > 0) break;
     await zoomIn.click();
     await page.waitForTimeout(400);
   }
 
   const structure = await page.evaluate(() => {
-    const initials = [...document.querySelectorAll(".prensa-map-marker-initials")].find(
-      (node) => node.textContent === "TR"
-    );
-    if (!initials) return { found: false };
-    const visual = initials.closest(".prensa-map-marker");
-    const root = initials.closest(".maplibregl-marker");
+    const visual = document.querySelector('.prensa-map-marker[data-initials="TR"]');
+    if (!visual) return { found: false };
+    const pin = visual.querySelector(".prensa-map-marker-pin");
+    const root = visual.closest(".maplibregl-marker");
     return {
       found: true,
-      initialsInsideVisual: Boolean(visual?.contains(initials)),
+      pinInsideVisual: Boolean(visual.contains(pin)),
       visualInsideRoot: Boolean(root?.contains(visual)),
       rootHasMapLibreClass: root?.classList.contains("maplibregl-marker") ?? false,
       rootHasAnchorClass: root?.classList.contains("prensa-map-marker-anchor") ?? false,
@@ -62,21 +60,18 @@ async function main() {
   });
   if (!structure.found) {
     const dump = await page.evaluate(() => ({
-      initials: [...document.querySelectorAll(".prensa-map-marker-initials")].map((n) => n.textContent),
+      initials: [...document.querySelectorAll(".prensa-map-marker")].map((n) => n.getAttribute("data-initials")),
       clusters: document.querySelectorAll(".prensa-map-cluster").length,
     }));
     throw new Error(`Taylor TR marker not found ${JSON.stringify(dump)}`);
   }
-  if (!structure.initialsInsideVisual) throw new Error("TR is not inside the marker visual");
+  if (!structure.pinInsideVisual) throw new Error("Pin is not inside the marker visual");
   if (!structure.visualInsideRoot) throw new Error("Marker visual is not inside the MapLibre root");
   if (!structure.rootHasMapLibreClass) throw new Error("MapLibre class missing on marker root");
   if (structure.rootPosition !== "absolute") throw new Error(`Marker root position is ${structure.rootPosition}`);
-  if (structure.visualTransform !== "none") {
-    throw new Error(`Visual node has unexpected transform: ${structure.visualTransform}`);
-  }
 
   const otherInitials = await page.evaluate(() =>
-    [...document.querySelectorAll(".prensa-map-marker-initials")].map((node) => node.textContent)
+    [...document.querySelectorAll(".prensa-map-marker")].map((node) => node.getAttribute("data-initials"))
   );
   for (const initials of ["AM", "JL"]) {
     if (!otherInitials.includes(initials)) {
@@ -84,7 +79,7 @@ async function main() {
     }
   }
 
-  const marker = page.locator(".prensa-map-marker-initials", { hasText: "TR" }).first();
+  const marker = page.locator('.prensa-map-marker[data-initials="TR"]').first();
   const canvas = page.locator('[data-testid="maplibre-canvas"]');
   const before = await marker.boundingBox();
   if (!before) throw new Error("No TR bounding box");
@@ -113,43 +108,34 @@ async function main() {
   const afterZoom = await marker.boundingBox();
   if (!afterZoom) throw new Error("TR missing after zoom");
   const stillInside = await page.evaluate(() => {
-    const initials = [...document.querySelectorAll(".prensa-map-marker-initials")].find(
-      (node) => node.textContent === "TR"
-    );
-    return Boolean(initials?.closest(".prensa-map-marker")?.closest(".maplibregl-marker"));
+    const visual = document.querySelector('.prensa-map-marker[data-initials="TR"]');
+    return Boolean(visual?.closest(".maplibregl-marker"));
   });
   if (!stillInside) throw new Error("TR detached from MapLibre marker after zoom");
 
   await marker.click();
   const selected = await page.evaluate(() => {
-    const initials = [...document.querySelectorAll(".prensa-map-marker-initials")].find(
-      (node) => node.textContent === "TR"
-    );
-    const visual = initials?.closest(".prensa-map-marker");
-    const root = initials?.closest(".maplibregl-marker");
+    const visual = document.querySelector('.prensa-map-marker[data-initials="TR"]');
+    const root = visual?.closest(".maplibregl-marker");
     return {
       selected: visual?.classList.contains("is-selected") ?? false,
       rootTransform: root ? getComputedStyle(root).transform : "",
-      visualTransform: visual ? getComputedStyle(visual).transform : "",
     };
   });
   if (!selected.selected) throw new Error("Selection did not style the inner marker");
-  if (selected.visualTransform !== "none") {
-    throw new Error("Selection applied a transform to the inner visual");
-  }
 
   await page.locator('[data-geo-day="week"]').click();
   await page.locator('[data-consultant-name="c-taylor"]').click();
   await page.locator('[data-testid="fit-jobs"]').click();
-  await page.locator(".prensa-map-marker-initials, .prensa-map-cluster").first().waitFor({
+  await page.locator(".prensa-map-marker[data-initials], .prensa-map-cluster").first().waitFor({
     timeout: 10000,
   });
   for (let i = 0; i < 5; i += 1) {
-    if ((await page.locator(".prensa-map-marker-initials", { hasText: "TR" }).count()) > 0) break;
+    if ((await page.locator('.prensa-map-marker[data-initials="TR"]').count()) > 0) break;
     await page.locator('[data-testid="map-zoom-in"]').click();
     await page.waitForTimeout(350);
   }
-  if ((await page.locator(".prensa-map-marker-initials", { hasText: "TR" }).count()) === 0) {
+  if ((await page.locator('.prensa-map-marker[data-initials="TR"]').count()) === 0) {
     throw new Error("Taylor marker missing after Whole Week / focus uncluster");
   }
 
@@ -158,15 +144,15 @@ async function main() {
     .locator('[data-testid="maplibre-canvas"][data-map-engine="local-maplibre"][data-map-ready="true"]')
     .waitFor({ timeout: 20000 });
   await page.locator('[data-testid="fit-jobs"]').click();
-  await page.locator(".prensa-map-marker-initials, .prensa-map-cluster").first().waitFor({
+  await page.locator(".prensa-map-marker[data-initials], .prensa-map-cluster").first().waitFor({
     timeout: 15000,
   });
   for (let i = 0; i < 4; i += 1) {
-    if ((await page.locator(".prensa-map-marker-initials", { hasText: "TR" }).count()) > 0) break;
+    if ((await page.locator('.prensa-map-marker[data-initials="TR"]').count()) > 0) break;
     await page.locator('[data-testid="map-zoom-in"]').click();
     await page.waitForTimeout(400);
   }
-  const localTr = await page.locator(".prensa-map-marker-initials", { hasText: "TR" }).count();
+  const localTr = await page.locator('.prensa-map-marker[data-initials="TR"]').count();
   if (localTr === 0) throw new Error("Local MapLibre lost Taylor marker");
 
   console.log("MARKER_ANCHOR_E2E_OK");

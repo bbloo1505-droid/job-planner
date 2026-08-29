@@ -17,7 +17,7 @@ export function setOpenRouteTimeoutForTests(ms: number | null): void {
 }
 
 export const OPENROUTESERVICE_DIRECTIONS_URL =
-  "https://api.heigit.org/openrouteservice/v2/directions/driving-car/geojson";
+  "https://api.heigit.org/openrouteservice/v2/directions/driving-car/json";
 
 export type OpenRouteFetcher = (
   url: string,
@@ -55,6 +55,13 @@ export class OpenRouteServiceProvider implements RoutingProvider {
 }
 
 export function mapOpenRouteFeature(payload: unknown, expectedLegs: number): RoadRoute {
+  if (!payload || typeof payload !== "object") {
+    throw new RoutingUnavailableError("Malformed routing response");
+  }
+  const body = payload as Record<string, unknown>;
+  if (Array.isArray(body.routes)) {
+    return mapOpenRouteJson(body, expectedLegs);
+  }
   const feature = extractFeature(payload);
   const geometry = feature.geometry;
   if (
@@ -78,28 +85,42 @@ export function mapOpenRouteFeature(payload: unknown, expectedLegs: number): Roa
   }
 
   const properties = (feature.properties ?? {}) as Record<string, unknown>;
-  const summary = (properties.summary ?? {}) as Record<string, unknown>;
-  const segments = Array.isArray(properties.segments) ? properties.segments : [];
-  const legs: RouteLeg[] = segments.map((segment) => {
-    const row = (segment ?? {}) as Record<string, unknown>;
-    return {
-      distanceMeters: Number(row.distance) || 0,
-      durationSeconds: Number(row.duration) || 0,
-    };
-  });
-  if (legs.length === 0 && expectedLegs > 0) {
-    throw new RoutingUnavailableError("Route had no legs");
-  }
-  if (expectedLegs > 0 && legs.length !== expectedLegs) {
-    throw new RoutingUnavailableError("Route leg count did not match waypoints");
+  return finishRoute(
+    coordinates,
+    (properties.summary ?? {}) as Record<string, unknown>,
+    Array.isArray(properties.segments) ? properties.segments : [],
+    expectedLegs
+  );
+}
+
+/** Google encoded polyline → [lng, lat] pairs. ORS JSON geometry uses precision 5. */
+export function decodeOpenRoutePolyline(encoded: string, precision = 5): Array<[number, number]> {
+  const coordinates: Array<[number, number]> = [];
+  const factor = 10 ** precision;
+  let index = 0;
+  let lat = 0;
+  let lng = 0;
+
+  while (index < encoded.length) {
+    lat += nextDelta();
+    lng += nextDelta();
+    coordinates.push([lng / factor, lat / factor]);
   }
 
-  return {
-    geometry: { type: "LineString", coordinates },
-    totalDistanceMeters: Number(summary.distance) || sum(legs, "distanceMeters"),
-    totalDurationSeconds: Number(summary.duration) || sum(legs, "durationSeconds"),
-    legs,
-  };
+  function nextDelta(): number {
+    let result = 0;
+    let shift = 0;
+    let byte = 0;
+    do {
+      if (index >= encoded.length) break;
+      byte = encoded.charCodeAt(index++) - 63;
+      result |= (byte & 0x1f) << shift;
+      shift += 5;
+    } while (byte >= 0x20);
+    return result & 1 ? ~(result >> 1) : result >> 1;
+  }
+
+  return coordinates;
 }
 
 async function fetchOpenRoute(
@@ -117,7 +138,6 @@ async function fetchOpenRoute(
       },
       body: JSON.stringify({
         coordinates,
-        instructions: false,
         geometry: true,
       }),
       cache: "no-store",
@@ -147,6 +167,81 @@ async function fetchOpenRoute(
   }
 }
 
+function mapOpenRouteJson(
+  body: Record<string, unknown>,
+  expectedLegs: number
+): RoadRoute {
+  const routes = body.routes as unknown[];
+  const route = (routes[0] ?? null) as Record<string, unknown> | null;
+  if (!route) {
+    throw new RoutingUnavailableError("Malformed routing response");
+  }
+  const encoded = route.geometry;
+  const coordinates =
+    typeof encoded === "string"
+      ? decodeOpenRoutePolyline(encoded)
+      : encoded && typeof encoded === "object"
+        ? lineStringFromUnknown((encoded as { coordinates?: unknown }).coordinates)
+        : [];
+  if (coordinates.length < 2) {
+    throw new RoutingUnavailableError("Malformed route geometry");
+  }
+  return finishRoute(
+    coordinates,
+    (route.summary ?? {}) as Record<string, unknown>,
+    Array.isArray(route.segments) ? route.segments : [],
+    expectedLegs
+  );
+}
+
+function finishRoute(
+  coordinates: Array<[number, number]>,
+  summary: Record<string, unknown>,
+  segments: unknown[],
+  expectedLegs: number
+): RoadRoute {
+  const legs: RouteLeg[] = segments.map((segment) => {
+    const row = (segment ?? {}) as Record<string, unknown>;
+    return {
+      distanceMeters: Number(row.distance) || 0,
+      durationSeconds: Number(row.duration) || 0,
+    };
+  });
+  if (legs.length === 0 && expectedLegs === 1) {
+    const distanceMeters = Number(summary.distance) || 0;
+    const durationSeconds = Number(summary.duration) || 0;
+    if (distanceMeters > 0 || durationSeconds > 0) {
+      legs.push({ distanceMeters, durationSeconds });
+    }
+  }
+  if (legs.length === 0 && expectedLegs > 0) {
+    throw new RoutingUnavailableError("Route had no legs");
+  }
+  if (expectedLegs > 0 && legs.length !== expectedLegs) {
+    throw new RoutingUnavailableError("Route leg count did not match waypoints");
+  }
+
+  return {
+    geometry: { type: "LineString", coordinates },
+    totalDistanceMeters: Number(summary.distance) || sum(legs, "distanceMeters"),
+    totalDurationSeconds: Number(summary.duration) || sum(legs, "durationSeconds"),
+    legs,
+  };
+}
+
+function lineStringFromUnknown(value: unknown): Array<[number, number]> {
+  if (!Array.isArray(value)) return [];
+  const coordinates: Array<[number, number]> = [];
+  for (const pair of value) {
+    if (!Array.isArray(pair) || pair.length < 2) continue;
+    const lng = Number(pair[0]);
+    const lat = Number(pair[1]);
+    if (!Number.isFinite(lng) || !Number.isFinite(lat)) continue;
+    coordinates.push([lng, lat]);
+  }
+  return coordinates;
+}
+
 function extractFeature(payload: unknown): {
   geometry?: { type?: string; coordinates?: unknown };
   properties?: unknown;
@@ -155,7 +250,9 @@ function extractFeature(payload: unknown): {
     throw new RoutingUnavailableError("Malformed routing response");
   }
   const body = payload as Record<string, unknown>;
-  if (body.type === "Feature") return body as { geometry?: { type?: string; coordinates?: unknown }; properties?: unknown };
+  if (body.type === "Feature") {
+    return body as { geometry?: { type?: string; coordinates?: unknown }; properties?: unknown };
+  }
   if (body.type === "FeatureCollection" && Array.isArray(body.features) && body.features[0]) {
     return body.features[0] as {
       geometry?: { type?: string; coordinates?: unknown };

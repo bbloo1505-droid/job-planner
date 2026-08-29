@@ -159,7 +159,7 @@ describe("allocation map model", () => {
       kind: "unassigned" as const,
       lat: -27.47 + (index % 8) * 0.04,
       lng: 153.02 + Math.floor(index / 8) * 0.05,
-      colour: "#9a5a58",
+      colour: "#e4453a",
       initials: "",
       consultantId: null,
       consultantName: "Unassigned",

@@ -126,11 +126,11 @@ export function OptimisedWorkspace() {
   return (
     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
       <div className="flex h-full flex-col bg-canvas">
-        <header className="shrink-0 border-b border-slate-200/70 bg-white px-7 pt-5 pb-4">
+        <header className="shrink-0 border-b border-slate-200/70 bg-white px-4 pt-4 pb-3 md:px-7 md:pt-5 md:pb-4">
           <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
             <div className="min-w-0">
               <p className="eyebrow">Day route</p>
-              <h1 className="mt-1 text-[21px] leading-none font-semibold tracking-tight text-slate-900">
+              <h1 className="mt-1 text-[18px] leading-none font-semibold tracking-tight text-slate-900 md:text-[21px]">
                 {date ? format(date, "EEEE d MMMM") : "Day route"}
               </h1>
             </div>
@@ -261,7 +261,7 @@ export function OptimisedWorkspace() {
 
         <RouteStatusBar />
 
-        <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-auto px-7 py-4 lg:flex-row lg:overflow-hidden">
+        <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-auto px-4 py-4 md:px-7 lg:flex-row lg:overflow-hidden">
           <div className="min-w-0 space-y-4 lg:flex-1 lg:overflow-y-auto lg:pb-1">
             <SuggestedBookingTimes />
             <UnlocatedProperties />

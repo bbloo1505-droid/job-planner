@@ -22,6 +22,13 @@ describe("job marker geographic anchor", () => {
     assert.doesNotMatch(anchor[0], /\btop\s*:/);
   });
 
+  it("styles job markers as teardrop pins with a white center", () => {
+    const css = readFileSync(join(dir, "../../app/globals.css"), "utf8");
+    assert.match(css, /\.prensa-map-marker-pin\s*\{/);
+    assert.match(css, /border-radius:\s*50%\s+50%\s+50%\s+0/);
+    assert.match(css, /\.prensa-map-marker-dot\s*\{/);
+  });
+
   it("keeps MapLibre transform ownership on the provider root", () => {
     const provider = readFileSync(join(dir, "maplibre-allocation-provider.ts"), "utf8");
     assert.match(provider, /new Marker\(\{ element: el, anchor: "center" \}\)/);

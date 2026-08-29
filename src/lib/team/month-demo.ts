@@ -10,7 +10,7 @@ export const MONTH_EXTRA_CONSULTANTS: Consultant[] = [
     initials: "HC",
     team: "SEQ Field",
     baseOffice: OFFICE,
-    displayColour: "#5c6e58",
+    displayColour: "#16a34a",
     active: true,
   },
   {
@@ -19,7 +19,7 @@ export const MONTH_EXTRA_CONSULTANTS: Consultant[] = [
     initials: "DP",
     team: "SEQ Field",
     baseOffice: OFFICE,
-    displayColour: "#6b5360",
+    displayColour: "#7c3aed",
     active: true,
   },
   {
@@ -28,7 +28,7 @@ export const MONTH_EXTRA_CONSULTANTS: Consultant[] = [
     initials: "QF",
     team: "SEQ Field",
     baseOffice: OFFICE,
-    displayColour: "#4e6270",
+    displayColour: "#0ea5a4",
     active: true,
   },
   {
@@ -37,7 +37,7 @@ export const MONTH_EXTRA_CONSULTANTS: Consultant[] = [
     initials: "AN",
     team: "SEQ Field",
     baseOffice: OFFICE,
-    displayColour: "#6a5848",
+    displayColour: "#ea7a1c",
     active: true,
   },
   {
@@ -46,7 +46,7 @@ export const MONTH_EXTRA_CONSULTANTS: Consultant[] = [
     initials: "BF",
     team: "SEQ Field",
     baseOffice: OFFICE,
-    displayColour: "#3f5f6b",
+    displayColour: "#2563eb",
     active: true,
   },
   {
@@ -55,7 +55,7 @@ export const MONTH_EXTRA_CONSULTANTS: Consultant[] = [
     initials: "CS",
     team: "SEQ Field",
     baseOffice: OFFICE,
-    displayColour: "#5a5870",
+    displayColour: "#4f46e5",
     active: true,
   },
   {
@@ -64,7 +64,7 @@ export const MONTH_EXTRA_CONSULTANTS: Consultant[] = [
     initials: "EB",
     team: "SEQ Field",
     baseOffice: OFFICE,
-    displayColour: "#4f6752",
+    displayColour: "#15803d",
     active: true,
   },
 ];

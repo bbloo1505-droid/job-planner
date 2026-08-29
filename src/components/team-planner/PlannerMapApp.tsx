@@ -59,22 +59,22 @@ export function PlannerMapApp() {
           className="flex h-full min-h-0 flex-col bg-canvas"
           data-testid="planner-map-app"
         >
-          <header className="shrink-0 border-b border-slate-200/70 bg-white px-5 py-3.5">
+          <header className="shrink-0 border-b border-slate-200/70 bg-white px-4 py-3 md:px-5 md:py-3.5">
             <p className="eyebrow">Planner Map</p>
             <h1 className="mt-1 text-[18px] leading-tight font-semibold tracking-tight text-slate-900">
               Allocation map
             </h1>
             <p className="mt-0.5 text-[13px] text-slate-500">{weekRangeLabel(weekStart)}</p>
           </header>
-          <div className="flex min-h-0 flex-1">
-            <div className="min-h-0 min-w-0 flex-1">
+          <div className="flex min-h-0 flex-1 flex-col md:flex-row">
+            <div className="min-h-[42vh] min-w-0 flex-1 md:min-h-0">
               <TeamMap variant="full" />
             </div>
             <aside
               className={cn(
-                "flex shrink-0 flex-col border-l border-hairline bg-white",
-                "w-[min(34vw,320px)] min-w-[260px] max-w-[340px]",
-                "max-md:absolute max-md:inset-y-0 max-md:right-0 max-md:z-20 max-md:shadow-md"
+                "flex shrink-0 flex-col border-hairline bg-white",
+                "h-[min(34vh,280px)] w-full border-t",
+                "md:h-auto md:w-[min(34vw,320px)] md:min-w-[260px] md:max-w-[340px] md:border-t-0 md:border-l"
               )}
             >
               {selectedIsUnassigned ? (

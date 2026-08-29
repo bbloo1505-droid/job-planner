@@ -8,6 +8,13 @@ const inter = Inter({
   variable: "--font-sans",
 });
 
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover" as const,
+  themeColor: "#1a2744",
+};
+
 export const metadata: Metadata = {
   title: "Field Allocation Planner — Prototype",
   description:

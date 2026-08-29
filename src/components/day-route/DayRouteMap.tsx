@@ -116,7 +116,7 @@ export function DayRouteMap() {
     <section className="panel overflow-hidden">
       <div className="panel-header flex items-center justify-between gap-3">
         <h2 className="panel-heading">Route overview</h2>
-        <p className="text-[11px] text-slate-400">
+        <p className="hidden text-[11px] text-slate-400 sm:block">
           {OPENFREEMAP_MAP_NOTICE}
         </p>
       </div>
@@ -128,7 +128,7 @@ export function DayRouteMap() {
               : `${model.unresolvedJobIds.length} stops are not on the map — resolve the addresses to place them.`}
           </p>
         ) : null}
-      <div className="relative h-[360px] bg-[#e8eef3] lg:h-[400px]">
+      <div className="relative h-[220px] bg-[#e8eef3] sm:h-[300px] lg:h-[400px]">
         <div
           ref={rootRef}
           className="prensa-map-canvas prensa-openfreemap absolute inset-0"

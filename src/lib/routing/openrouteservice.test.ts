@@ -3,6 +3,7 @@ import { afterEach, describe, it } from "node:test";
 import { serverRoadRouteCache } from "@/lib/routing/route-cache";
 import {
   OPENROUTESERVICE_DIRECTIONS_URL,
+  decodeOpenRoutePolyline,
   mapOpenRouteFeature,
   setOpenRouteFetcherForTests,
   setOpenRouteTimeoutForTests,
@@ -52,6 +53,33 @@ describe("openrouteservice mapper", () => {
     assert.equal(route.legs.length, 2);
     assert.equal(route.legs[0].durationSeconds, 720);
     assert.equal(route.legs[1].distanceMeters, 8400);
+  });
+
+  it("maps a JSON directions response and decodes the polyline", () => {
+    const encoded = decodeOpenRoutePolyline("_p~iF~ps|U_ulLnnqC_mqNvxq`@");
+    assert.equal(encoded.length, 3);
+    assert.ok(Math.abs(encoded[0][0] - -120.2) < 0.001);
+    assert.ok(Math.abs(encoded[0][1] - 38.5) < 0.001);
+
+    const route = mapOpenRouteFeature(
+      {
+        routes: [
+          {
+            summary: { distance: 16400, duration: 1380 },
+            segments: [
+              { distance: 8000, duration: 720 },
+              { distance: 8400, duration: 660 },
+            ],
+            geometry: "_p~iF~ps|U_ulLnnqC_mqNvxq`@",
+          },
+        ],
+      },
+      2
+    );
+    assert.equal(route.geometry.type, "LineString");
+    assert.equal(route.geometry.coordinates.length, 3);
+    assert.equal(route.legs.length, 2);
+    assert.equal(route.totalDistanceMeters, 16400);
   });
 
   it("G. times out instead of hanging", async () => {

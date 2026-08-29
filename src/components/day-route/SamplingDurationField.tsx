@@ -45,7 +45,7 @@ export function SamplingDurationField({
               onChange(value);
             }}
             className={cn(
-              "h-7 min-w-8 px-2 text-[11.5px] font-medium tabular-nums transition-colors",
+              "h-9 min-w-9 px-2 text-[11.5px] font-medium tabular-nums transition-colors sm:h-7 sm:min-w-8",
               compact
                 ? cn(
                     "border border-hairline",
@@ -73,7 +73,7 @@ export function SamplingDurationField({
             setCustomValue(String(minutes));
           }}
           className={cn(
-            "h-7 px-2 text-[11.5px] font-medium transition-colors",
+            "h-9 px-2 text-[11.5px] font-medium transition-colors sm:h-7",
             compact
               ? cn(
                   "-ml-px rounded-r-lg border border-hairline",

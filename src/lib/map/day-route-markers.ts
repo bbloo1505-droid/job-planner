@@ -72,7 +72,12 @@ export function applyStopMarkerElement(el: HTMLElement, item: DayRouteStopMarker
   ]
     .filter(Boolean)
     .join(" ");
-  visual.textContent = String(item.order);
+  visual.textContent = "";
+  const pin = ensureChild(visual, "prensa-day-route-stop-pin");
+  pin.className = "prensa-day-route-stop-pin";
+  const num = ensureChild(visual, "prensa-day-route-stop-num");
+  num.className = "prensa-day-route-stop-num";
+  num.textContent = String(item.order);
 }
 
 export function createCandidateMarkerElement(

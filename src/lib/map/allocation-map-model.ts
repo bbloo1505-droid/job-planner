@@ -254,7 +254,7 @@ export function buildAllocationMapModel(input: {
       kind: "unassigned",
       lat: point.lat,
       lng: point.lng,
-      colour: "#9a5a58",
+      colour: "#e4453a",
       initials: "",
       consultantId: null,
       consultantName: "Unassigned",

@@ -41,13 +41,13 @@ export function applyJobMarkerElement(el: HTMLElement, item: MapMarkerModel): vo
     .join(" ");
   visual.style.setProperty("--marker-colour", item.colour);
   visual.style.opacity = String(item.opacity);
+  visual.dataset.initials = item.initials;
 
-  if (!unassigned) {
-    const initials = ensureChild(visual, "prensa-map-marker-initials", "span");
-    initials.textContent = item.initials;
-  } else {
-    removeChild(visual, "prensa-map-marker-initials");
-  }
+  const pin = ensureChild(visual, "prensa-map-marker-pin");
+  pin.className = "prensa-map-marker-pin";
+  const dot = ensureChild(pin, "prensa-map-marker-dot");
+  dot.className = "prensa-map-marker-dot";
+  removeChild(visual, "prensa-map-marker-initials");
 
   if (item.dayLabel) {
     const day = ensureChild(visual, "prensa-map-marker-day", "span");

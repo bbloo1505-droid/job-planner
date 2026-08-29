@@ -251,13 +251,13 @@ export function TeamPlannerApp() {
           data-planner-ready="false"
           data-selected-date={selectedDate ?? ""}
         >
-          <header className="shrink-0 border-b border-slate-200/70 bg-white px-5 py-3.5">
+          <header className="shrink-0 border-b border-slate-200/70 bg-white px-4 py-2 md:px-5 md:py-3.5">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <div className="flex min-w-0 items-center gap-3">
+              <div className="flex min-w-0 flex-wrap items-center gap-2 md:gap-3">
                 <div>
-                  <p className="eyebrow">Team Planner</p>
+                  <p className="eyebrow hidden sm:block">Team Planner</p>
                   <h1
-                    className="text-[18px] leading-tight font-semibold tracking-tight text-slate-900"
+                    className="text-[16px] leading-tight font-semibold tracking-tight text-slate-900 md:text-[18px]"
                     data-testid="planner-period-label"
                   >
                     {boardView === "month" ? monthLabel(monthStart) : weekRangeLabel(weekStart)}
@@ -325,9 +325,9 @@ export function TeamPlannerApp() {
                 </Button>
               </div>
             </div>
-            <div className="mt-2 flex flex-wrap items-center gap-2">
+            <div className="mt-2 grid grid-cols-1 gap-1.5 min-[480px]:grid-cols-2 md:mt-2 md:flex md:flex-wrap md:items-center md:gap-2">
               <input
-                className="field-input h-7 max-w-[220px]"
+                className="field-input min-[480px]:col-span-2 md:h-7 md:max-w-[220px]"
                 placeholder="Search location or job no."
                 aria-label="Search jobs"
                 data-testid="planner-search"
@@ -335,7 +335,7 @@ export function TeamPlannerApp() {
                 onChange={(event) => setSearch(event.target.value)}
               />
               <select
-                className="field-input h-7 w-[140px]"
+                className="field-input md:h-7 md:w-[140px]"
                 value={consultantFilter}
                 onChange={(event) => setConsultantFilter(event.target.value)}
               >
@@ -347,7 +347,7 @@ export function TeamPlannerApp() {
                 ))}
               </select>
               <select
-                className="field-input h-7 w-[120px]"
+                className="field-input md:h-7 md:w-[120px]"
                 value={priorityFilter}
                 onChange={(event) =>
                   setPriorityFilter(event.target.value as typeof priorityFilter)
@@ -359,28 +359,30 @@ export function TeamPlannerApp() {
                 <option value="normal">Normal</option>
                 <option value="low">Low</option>
               </select>
-              <label className="flex items-center gap-1.5 text-[12px] text-slate-600">
-                <input
-                  type="checkbox"
-                  checked={dueThisWeekOnly}
-                  onChange={(event) => setDueThisWeekOnly(event.target.checked)}
-                />
-                Due this week
-              </label>
-              {boardView === "month" ? (
+              <div className="flex flex-wrap items-center gap-3 min-[480px]:col-span-2 md:contents">
                 <label className="flex items-center gap-1.5 text-[12px] text-slate-600">
                   <input
                     type="checkbox"
-                    checked={showWeekends}
-                    onChange={(event) => setShowWeekends(event.target.checked)}
+                    checked={dueThisWeekOnly}
+                    onChange={(event) => setDueThisWeekOnly(event.target.checked)}
                   />
-                  Show weekends
+                  Due this week
                 </label>
-              ) : null}
+                {boardView === "month" ? (
+                  <label className="flex items-center gap-1.5 text-[12px] text-slate-600">
+                    <input
+                      type="checkbox"
+                      checked={showWeekends}
+                      onChange={(event) => setShowWeekends(event.target.checked)}
+                    />
+                    Show weekends
+                  </label>
+                ) : null}
+              </div>
             </div>
           </header>
 
-          <div className="flex min-h-0 flex-1">
+          <div className="relative flex min-h-0 flex-1 flex-col md:flex-row">
             <div className="flex min-h-0 min-w-0 flex-1 flex-col">
               <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
                 <PlanningBoard
@@ -402,8 +404,8 @@ export function TeamPlannerApp() {
             <aside
               className={cn(
                 "flex shrink-0 flex-col bg-white",
-                "w-[min(34vw,320px)] min-w-[260px] max-w-[340px]",
-                "max-md:absolute max-md:inset-y-0 max-md:right-0 max-md:z-20 max-md:shadow-md"
+                "h-[min(34vh,280px)] w-full border-t border-slate-200/80",
+                "md:h-auto md:w-[min(34vw,320px)] md:min-w-[260px] md:max-w-[340px] md:border-t-0 md:border-l"
               )}
             >
               {selectedIsUnassigned ? (

@@ -152,7 +152,7 @@
   }
 
   .field-input {
-    @apply h-9 w-full rounded-xl border border-hairline bg-white px-3 text-[13px] text-slate-900 transition-colors outline-none;
+    @apply h-10 w-full rounded-xl border border-hairline bg-white px-3 text-base text-slate-900 transition-colors outline-none md:h-9 md:text-[13px];
     @apply hover:border-slate-300 focus:border-brand focus:ring-3 focus:ring-brand/15;
   }
 
@@ -270,75 +270,101 @@
   Visual styling (including any scale) belongs on the inner .prensa-map-marker.
 */
 .prensa-map-marker-anchor {
-  width: max-content;
-  height: max-content;
+  width: 0;
+  height: 0;
 }
 
 .prensa-map-marker {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  border-radius: 999px;
-  background: var(--marker-colour, #64748b);
-  border: 1.75px solid #fff;
-  color: #fff;
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  z-index: 1;
+  width: 30px;
+  height: 40px;
+  transform: translateX(-50%);
+  transform-origin: bottom center;
   cursor: pointer;
+}
+
+.prensa-map-marker-pin {
+  position: absolute;
+  left: 50%;
+  bottom: 1px;
+  width: 22px;
+  height: 22px;
+  margin-left: -11px;
+  border-radius: 50% 50% 50% 0;
+  transform: rotate(-45deg);
+  background: var(--marker-colour, #64748b);
+  border: 1.5px solid #fff;
+  box-shadow: 1px 2px 5px rgb(15 23 42 / 0.42);
   box-sizing: border-box;
 }
 
-.prensa-map-marker.is-unassigned {
-  width: 12px;
-  height: 12px;
+.prensa-map-marker.is-unassigned .prensa-map-marker-pin {
+  background: #e4453a;
+  border-color: #fff;
+}
+
+.prensa-map-marker.is-selected {
+  width: 34px;
+  height: 46px;
+}
+
+.prensa-map-marker.is-selected .prensa-map-marker-pin {
+  width: 26px;
+  height: 26px;
+  margin-left: -13px;
+  box-shadow:
+    1px 2px 6px rgb(15 23 42 / 0.4),
+    0 0 0 4px color-mix(in srgb, var(--marker-colour, #e4453a) 28%, transparent);
+}
+
+.prensa-map-marker-dot {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
   background: #fff;
-  border: 1.5px solid #9a5a58;
-}
-
-.prensa-map-marker.is-unassigned.is-selected {
-  width: 18px;
-  height: 18px;
-  border-width: 2.25px;
-  box-shadow: 0 0 0 6px rgb(154 90 88 / 0.16);
-}
-
-.prensa-map-marker.is-scheduled.is-selected {
-  box-shadow: 0 0 0 5px color-mix(in srgb, var(--marker-colour) 22%, transparent);
-}
-
-.prensa-map-marker-initials {
-  font-size: 8.5px;
-  font-weight: 700;
-  line-height: 1;
-  letter-spacing: 0.02em;
+  box-shadow: 0 0 0 0.5px rgb(15 23 42 / 0.12);
   pointer-events: none;
+}
+
+.prensa-map-marker.is-selected .prensa-map-marker-dot {
+  top: 5px;
+  left: 5px;
+  width: 8px;
+  height: 8px;
 }
 
 .prensa-map-marker-day {
   position: absolute;
-  top: -13px;
+  top: -2px;
   left: 50%;
   transform: translateX(-50%);
   font-size: 8px;
   font-weight: 700;
   letter-spacing: 0.06em;
-  color: #64748b;
+  color: #334155;
+  text-shadow: 0 0 3px #fff, 0 0 3px #fff;
   pointer-events: none;
   white-space: nowrap;
 }
 
 .prensa-map-marker-rank {
   position: absolute;
-  top: -6px;
-  right: -7px;
+  top: 2px;
+  right: -2px;
   display: flex;
-  width: 14px;
-  height: 14px;
+  width: 15px;
+  height: 15px;
   align-items: center;
   justify-content: center;
   border-radius: 999px;
   background: #1a2744;
+  border: 1.5px solid #fff;
   font-size: 8px;
   font-weight: 700;
   color: #fff;
@@ -346,18 +372,23 @@
 }
 
 .prensa-map-cluster {
+  position: absolute;
+  left: 0;
+  top: 0;
   display: flex;
-  min-width: 28px;
-  height: 28px;
+  min-width: 32px;
+  height: 32px;
   align-items: center;
   justify-content: center;
-  padding: 0 7px;
+  padding: 0 8px;
   border-radius: 999px;
   background: #1a2744;
   color: #fff;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   border: 2px solid #fff;
+  box-shadow: 0 2px 6px rgb(15 23 42 / 0.35);
+  transform: translate(-50%, -50%);
   cursor: pointer;
 }
 
@@ -422,22 +453,27 @@
 }
 
 .prensa-day-route-office-stack {
+  position: absolute;
+  left: 0;
+  top: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 2px;
+  transform: translate(-50%, -50%);
   pointer-events: none;
 }
 
 .prensa-day-route-office {
   display: flex;
-  width: 26px;
-  height: 26px;
+  width: 28px;
+  height: 28px;
   align-items: center;
   justify-content: center;
   border-radius: 6px;
   background: #1a2744;
   border: 2px solid #fff;
+  box-shadow: 0 2px 5px rgb(15 23 42 / 0.35);
   color: #fff;
   font-size: 8px;
   font-weight: 700;
@@ -458,33 +494,70 @@
 }
 
 .prensa-day-route-stop {
-  display: flex;
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 30px;
+  height: 40px;
+  transform: translateX(-50%);
+  transform-origin: bottom center;
+  cursor: pointer;
+}
+
+.prensa-day-route-stop-pin {
+  position: absolute;
+  left: 50%;
+  bottom: 1px;
   width: 24px;
   height: 24px;
-  align-items: center;
-  justify-content: center;
-  border-radius: 999px;
+  margin-left: -12px;
+  border-radius: 50% 50% 50% 0;
+  transform: rotate(-45deg);
   background: #1b7ab8;
   border: 2px solid #fff;
-  color: #fff;
-  font-size: 11px;
-  font-weight: 700;
-  cursor: pointer;
+  box-shadow: 1px 2px 5px rgb(15 23 42 / 0.42);
   box-sizing: border-box;
 }
 
-.prensa-day-route-stop.is-selected {
+.prensa-day-route-stop-num {
+  position: absolute;
+  left: 50%;
+  bottom: 12px;
+  transform: translateX(-50%);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1;
+  text-shadow: 0 1px 1px rgb(15 23 42 / 0.35);
+  pointer-events: none;
+}
+
+.prensa-day-route-stop.is-selected .prensa-day-route-stop-pin {
+  width: 28px;
+  height: 28px;
+  margin-left: -14px;
   background: #15628f;
-  box-shadow: 0 0 0 5px rgb(27 122 184 / 0.22);
+  box-shadow:
+    1px 2px 6px rgb(15 23 42 / 0.4),
+    0 0 0 5px rgb(27 122 184 / 0.28);
+}
+
+.prensa-day-route-stop.is-selected .prensa-day-route-stop-num {
+  bottom: 14px;
+  font-size: 13px;
 }
 
 .prensa-day-route-candidate {
-  width: 18px;
-  height: 18px;
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 22px;
+  height: 22px;
   border-radius: 999px;
-  background: transparent;
+  background: rgb(255 255 255 / 0.9);
   border: 2px dashed #1b7ab8;
   box-sizing: border-box;
+  transform: translate(-50%, -50%);
   cursor: pointer;
-  box-shadow: 0 0 0 3px rgb(255 255 255 / 0.85);
+  box-shadow: 0 0 0 3px rgb(255 255 255 / 0.7);
 }

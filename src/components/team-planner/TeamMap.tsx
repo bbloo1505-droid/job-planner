@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { format } from "date-fns";
 import { AllocationMap } from "@/components/map/providers/AllocationMap";
 import { DevMapProviderSwitch } from "@/components/map/providers/DevMapProviderSwitch";
@@ -54,8 +54,7 @@ export function TeamMap({ variant }: { variant: "full" | "split" }) {
   );
   const setSearch = useTeamPlannerStore((state) => state.setSearch);
   const mapRuntime = useMapProviderRuntime();
-  const overlayPanel = useOverlayPanel();
-  const padding = overlayPadding(variant === "full" ? FULL_PAD : SPLIT_PAD, overlayPanel);
+  const padding = variant === "full" ? FULL_PAD : SPLIT_PAD;
 
   const days = useMemo(() => weekDays(weekStart), [weekStart]);
   const workingDays = useMemo(() => days.map(isoDate), [days]);
@@ -207,7 +206,7 @@ export function TeamMap({ variant }: { variant: "full" | "split" }) {
             <DevMapProviderSwitch />
             {variant === "full" || variant === "split" ? (
               <input
-                className="field-input h-6 max-w-[180px] text-[12px]"
+                className="field-input h-9 w-full max-w-none text-base md:h-6 md:max-w-[180px] md:text-[12px]"
                 placeholder="Search location or job no."
                 value={search}
                 onChange={(event) => {
@@ -325,8 +324,8 @@ export function TeamMap({ variant }: { variant: "full" | "split" }) {
               </>
             )}
             <p className="text-[10.5px] text-slate-400">{weekRangeLabel(weekStart)}</p>
+            <ConsultantLegend consultants={consultants} />
           </div>
-          <ConsultantLegend consultants={consultants} />
         </div>
       </div>
     </section>
@@ -336,46 +335,26 @@ export function TeamMap({ variant }: { variant: "full" | "split" }) {
 function ConsultantLegend({
   consultants,
 }: {
-  consultants: { id: string; initials: string; displayColour: string }[];
+  consultants: { id: string; name: string; displayColour: string }[];
 }) {
   return (
-    <div className="pointer-events-none hidden rounded border border-hairline bg-white/95 px-2 py-1.5 md:block">
-      <p className="text-[9px] font-semibold tracking-[0.08em] text-slate-400 uppercase">
-        Consultants
-      </p>
-      <div className="mt-1 flex flex-wrap gap-1">
+    <div className="pointer-events-none mt-2 hidden rounded-xl border border-slate-200/80 bg-white/95 px-2.5 py-2 shadow-[0_6px_16px_-10px_rgb(15_23_42_/_0.45)] md:block">
+      <div className="grid grid-cols-2 gap-x-3 gap-y-1">
         {consultants.map((item) => (
-          <span key={item.id} className="flex items-center gap-1 text-[10px] text-slate-600">
+          <span key={item.id} className="flex items-center gap-1.5 text-[11px] font-medium text-slate-700">
             <span
-              className="flex size-3.5 items-center justify-center rounded-full text-[7px] font-bold text-white"
+              className="size-2.5 shrink-0 rounded-full shadow-[0_0_0_1px_rgb(255_255_255)]"
               style={{ backgroundColor: item.displayColour }}
-            >
-              {item.initials}
-            </span>
+            />
+            {consultantFirstName(item.name)}
           </span>
         ))}
+        <span className="flex items-center gap-1.5 text-[11px] font-medium text-slate-700">
+          <span className="size-2.5 shrink-0 rounded-full bg-[#e4453a] shadow-[0_0_0_1px_rgb(255_255_255)]" />
+          Unassigned
+        </span>
       </div>
     </div>
   );
 }
 
-function useOverlayPanel(): boolean {
-  const [overlay, setOverlay] = useState(false);
-  useEffect(() => {
-    const media = window.matchMedia("(max-width: 767px)");
-    const apply = () => setOverlay(media.matches);
-    apply();
-    media.addEventListener("change", apply);
-    return () => media.removeEventListener("change", apply);
-  }, []);
-  return overlay;
-}
-
-function overlayPadding(base: MapPadding, overlay: boolean): MapPadding {
-  if (!overlay) return base;
-  return {
-    ...base,
-    right: Math.max(base.right, 276),
-    bottom: Math.max(base.bottom, 80),
-  };
-}

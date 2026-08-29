@@ -17,7 +17,7 @@ export const TEAM_CONSULTANTS: Consultant[] = [
     initials: "AM",
     team: "SEQ Field",
     baseOffice: OFFICE,
-    displayColour: "#1b7ab8",
+    displayColour: "#2b7de9",
     active: true,
   },
   {
@@ -26,7 +26,7 @@ export const TEAM_CONSULTANTS: Consultant[] = [
     initials: "JL",
     team: "SEQ Field",
     baseOffice: OFFICE,
-    displayColour: "#3d5a80",
+    displayColour: "#5850ec",
     active: true,
   },
   {
@@ -35,7 +35,7 @@ export const TEAM_CONSULTANTS: Consultant[] = [
     initials: "TR",
     team: "SEQ Field",
     baseOffice: OFFICE,
-    displayColour: "#4f6f7a",
+    displayColour: "#0f9aa8",
     active: true,
   },
   {
@@ -44,7 +44,7 @@ export const TEAM_CONSULTANTS: Consultant[] = [
     initials: "CM",
     team: "SEQ Field",
     baseOffice: OFFICE,
-    displayColour: "#3f6b52",
+    displayColour: "#22a05a",
     active: true,
   },
   {
@@ -53,7 +53,7 @@ export const TEAM_CONSULTANTS: Consultant[] = [
     initials: "SP",
     team: "SEQ Field",
     baseOffice: OFFICE,
-    displayColour: "#6a5f52",
+    displayColour: "#e07a22",
     active: true,
   },
   {
@@ -62,7 +62,7 @@ export const TEAM_CONSULTANTS: Consultant[] = [
     initials: "ME",
     team: "SEQ Field",
     baseOffice: OFFICE,
-    displayColour: "#5a6b78",
+    displayColour: "#1e4b7a",
     active: true,
   },
   {
@@ -71,7 +71,7 @@ export const TEAM_CONSULTANTS: Consultant[] = [
     initials: "RC",
     team: "SEQ Field",
     baseOffice: OFFICE,
-    displayColour: "#6b6840",
+    displayColour: "#7c3aed",
     active: true,
   },
   {
@@ -80,7 +80,7 @@ export const TEAM_CONSULTANTS: Consultant[] = [
     initials: "JW",
     team: "SEQ Field",
     baseOffice: OFFICE,
-    displayColour: "#4d5d6b",
+    displayColour: "#0e7490",
     active: true,
   },
 ];

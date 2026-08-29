@@ -118,10 +118,10 @@ function Bar({
   children: React.ReactNode;
 }) {
   return (
-    <div className="shrink-0 border-b border-hairline bg-white px-7 py-2">
+    <div className="shrink-0 border-b border-hairline bg-white px-4 py-2 md:px-7">
       <div
         className={cn(
-          "flex h-10 items-center justify-between gap-3 rounded-xl border px-3.5 text-[12.5px]",
+          "flex min-h-10 flex-col items-stretch gap-2 rounded-xl border px-3.5 py-2 text-[12.5px] sm:h-10 sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:py-0",
           className
         )}
       >
